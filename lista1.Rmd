@@ -1,12 +1,12 @@
 ---
-title: "MAE0XXX - Análise de Sobrevivência - Lista 1"
+title: "MAE0514 - Introducão a Análise de Sobrevivência - Lista 1"
 author: |
-  | Brunão
+  | Bruno de Castro Paul Schultze\thanks{Número USP: 10736862}
   | Rubens Santos Andrade Filho\thanks{Número USP: 10370336}
 date: "`r stringr::str_to_sentence(format(Sys.time(), '%B de %Y'))`"
 lang: pt-BR
 header-includes:
-  # - \usepackage[brazilian]{babel}
+  # - \usepackage[brazilian]{babel} # ja usando lang: pt-BR
   - \usepackage{float}
   - \usepackage{amsmath}
   - \usepackage{amsthm}
@@ -28,16 +28,25 @@ header-includes:
   - \usepackage{pdfpages}
   - \usepackage{cleveref}
   - \usepackage{threeparttable}
-output: 
-  # pdf_document:
-  bookdown::pdf_document2:
+output:
+  pdf_document: 
     fig_caption: yes
     number_sections: no
     toc: true
-    toc_depth: 2
+    toc_depth: 3
+  # bookdown::pdf_document2:
+  #   fig_caption: yes
+  #   number_sections: no
+  #   toc: true
+  #   toc_depth: 3
 ---
 
 \pagebreak
+
+\newcommand\invisiblesection[1]{%
+  \refstepcounter{section}%
+  \addcontentsline{toc}{section}{#1}%
+  \sectionmark{#1}}
 
 ```{r setup, include=FALSE}
 
@@ -50,11 +59,161 @@ knitr::opts_chunk$set(warning=FALSE,
 
 library(tidyverse)
 library(ggplot2)
-
+library(knitr)
 library(extRemes) # bandas de confiança nos qqplot
 ```
 
+\clearpage
+
+\invisiblesection{Exercício 1}
+\includepdf[pages=1]{q1_q4.pdf}
+
+\invisiblesection{Exercício 2}
+\includepdf[pages=2]{q1_q4.pdf}
+
+\invisiblesection{Exercício 3}
+\includepdf[pages=3]{q1_q4.pdf}
+
+\invisiblesection{Exercício 4}
+\includepdf[pages=4-]{q1_q4.pdf}
+
+<!-- \includepdf[pages=1,scale=.8,pagecommand={\section{Questões 1 a 4}\label{pdf:q1_q4}},linktodoc=true]{q1_q4.pdf} -->
+<!-- \includepdf[pages=2-,scale=.8,pagecommand={},linktodoc=true]{q1_q4.pdf} -->
+
+# Questão 5
+
+```{r, include=FALSE}
+
+#### CÓDIGOS EXERCÍCIO 5
+
+
+```
+
+
+
+## a)
+
+Temos que:
+$$Y_A = \ln(T_A) = 2 + 2W$$
+$$Y_B = \ln(T_B) = 2,5 + 2W$$
+Assim, sendo:
+$$W = \frac{\ln(T_A) - 2}{2}$$
+$$T_A = \exp\{2 + 2W\}$$
+
+Podemos então escrever:
+
+$$S_A(t) = P(T_A > t) = P(\exp\{2 + 2W\} > t) = P(W > \frac{ln(T_A) - 2}{2})$$
+Então:
+$$S_A(t) = S_W(\frac{ln(T_A) - 2}{2}) = \exp\{- e^{\frac{ln(T_A) - 2}{2}}\}$$
+$$\leftrightarrow S_A(t) = \exp\{- \sqrt{t} . e^{-1}\}$$
+Analogamente:
+$$S_B(t) = \exp\{- \sqrt{t} . e^{- \frac{2,5}{2}}\}$$
+
+## b)
+Agora temos simplesmente que calcular $S_A(t)$ e $S_B(t)$ para t igual a 6, 12, 24 e 60 (pois t está em meses).
+Assim:
+
+```{r, echo = T}
+tibble(
+  t = c(6, 12, 24, 60),
+  S_A = exp(- (sqrt(t) * exp(-1))),
+  S_B = exp(- (sqrt(t) * exp(-(2.5/2))))
+) %>% 
+  kable(col.names = c('t', '$S_A(t)$', '$S_B(t)$'), digits = 3) 
+```
+
+Podemos notar então que para todo t testado, $S_B(t) > S_A(t)$.
+
+## c)
+A partir da questão 1 podemos tirar a relação:
+$$\alpha(t) = \frac{d}{dt}[- ln \ S(t)]$$
+
+Assim:
+
+$$\alpha_A(t) = \frac{d}{dt}(\sqrt{t} . e^{-1}) = \frac{1}{2e\sqrt{t}}$$
+$$\alpha_A(t) = \frac{d}{dt}(\sqrt{t} . e^{- \frac{2,5}{2}}) = \frac{1}{2e^{\frac{2,5}{2}}\sqrt{t}}$$
+
+```{r}
+tibble(
+  t = c(6, 12, 24, 60),
+  alp_a = 1/(2 * exp(1) * sqrt(t)),
+  alp_b = 1/(2 * exp(2.5/2) * sqrt(t)),
+  razao = alp_a/alp_b
+) %>% 
+  kable(col.names = c('t', '$\\alpha_A(t)$', '$\\alpha_B(t)$', 
+                      '$\\frac{\\alpha_A}{\\alpha_B}$'), 
+        digits = 3)
+```
+
+Notemos então que a razão é a mesma para todo t analisado.
+
+## d)
+
+Se W tem uma distribuição normal padrão, sendo $\Phi(w)$ a função de distribuição acumulada, seguindo os mesmos passos de 5.a temos que:
+$$1 - F_A(t) = 1 - \Phi(\frac{ln(t) - 2}{2})$$
+$$\therefore S_A(t) =  1 - \Phi(c)$$
+Analogamente:
+$$ S_B(t) = 1 - \Phi(\frac{ln(t) - 2,5}{2})$$
+
+## e)
+
+A função _pnorm(x)_ nos dá $\Phi(x)$. 
+
+```{r, echo = T}
+
+tibble(
+  t = c(6, 12, 24, 60),
+  S_A = 1 - pnorm((log(t) - 2)/2),
+  S_B = 1 - pnorm((log(t) - 2.5)/2)
+   ) %>% kable(col.names = c('t', '$S_A(t)$', '$S_B(t)$'), digits = 3) 
+```
+
+Notemos que, novamente, $S_B(t) > S_A(t)$ para todos os t analisados.
+
+## f)
+
+Para facilitar, ao inves da relação usada em 5.c, vamos usar a relação:
+$$\alpha(t) = \frac{f(t)}{S(t)}$$
+No livro "Introduction to the Theory of Statistics", de Mood, Graybill e Boes, aprendemos que se $Y = g(X)$ então (dadas algumas condições generosas, que são respeitadas aqui):
+$$f_Y(y) = |\frac{d}{dy}g^{-1}(y)|f_x(g^{-1}(y))$$
+Assim:
+$$f_A(t) = |\frac{d}{dt} \frac{ln(t) - 2}{2}| \ .\ \Phi(\frac{ln(t) - 2}{2})$$
+$$\therefore f_A(t) =  \frac{1}{2t}\ f_W(\frac{ln(t) - 2}{2})$$
+
+Analogamente:
+$$f_B(t) =  \frac{1}{2t}\ f_W(\frac{ln(t) - 2,5}{2})$$
+
+Assim, conseguimos $\alpha(t)$ usando a relação já mostrada aqui:
+$$\alpha(t) = \frac{f(t)}{S(t)}$$
+
+Dessa forma, sabendo que _dnorm(x)_ é $f_W(x)$ tendo W uma distribuição normal padrão:
+
+```{r}
+tibble(
+  t = c(6, 12, 24, 60),
+  alp_a = ((1/(2*t))*(dnorm((log(t) - 2)/(2))))/(1 - pnorm((log(t) - 2)/2)),
+  alp_b = ((1/(2*t))*(dnorm((log(t) - 2.5)/(2))))/(1 - pnorm((log(t) - 2.5)/2)),
+  razao = alp_a/alp_b
+   ) %>% kable(col.names = c('t', '$\\alpha_A(t)$', 
+                             '$\\alpha_B(t)$', 
+                             '$\\frac{\\alpha_A}{\\alpha_B}$'), digits = 3)
+```
+
+Portanto, diferentemente de antes, a razão entre as funções de taxa não é mais igual para os diferentes t testados, $\alpha_A(t) > \alpha_B(t)$ e a função decresce quando t aumenta.
+
+
+
+
+
 # Exercício 6
+
+```{r, include=FALSE}
+
+
+#### CÓDIGOS EXERCÍCIO 6
+
+```
+
 
 Considere a distribuição Weibull, com função de sobrevivência dada por $$
 S(t)=\exp \left\{-\lambda t^{\rho}\right\}, t \geq 0
@@ -75,12 +234,12 @@ $$
 Segue a implementação em `R`:
 
 ```{r}
-# criar função de taxa de falha dados lambda e rho
+# dados lambda e rho, cria função de taxa de falha
 alpha_factory <- function(lambda, rho){
   function(t) ifelse(t>0, lambda * rho * t^(rho-1), NA)
 }
 
-# criar função de sobrevivencia dados lambda e rho
+# dados lambda e rho, cria função de sobrevivencia
 s_factory <- function(lambda, rho){
   function(t) ifelse(t>0, exp(-lambda * t^rho), 1)
 }
@@ -106,7 +265,7 @@ df <- expand_grid(lambda = c(1,5/4), rho = c(3/4,1,5/4)) %>%
   purrr::pmap_dfr(calc_stats)
 ```
 
-```{r, fig.align='center',fig.asp=1, out.height = NULL}
+```{r,echo=FALSE,fig.align='center',fig.asp=1, out.height = NULL}
 # grafico da funcao de taxa de falha
 
 # para transf. do axis secundário
@@ -177,7 +336,9 @@ n <- 100
 x <- rweibull(n, shape=rho, scale = 1/lambda^(1/rho))
 ```
 
-(a) Obtenha um boxplot dos dados e um histograma (com a curva da densidade teórica também no gráfico). Obtenha também a curva de sobrevivência empírica dos dados e coloque num mesmo gráfico a curva empírica e a curva teórica utilizada para gerar os gráficos.
+## a) 
+
+Obtenha um boxplot dos dados e um histograma (com a curva da densidade teórica também no gráfico). Obtenha também a curva de sobrevivência empírica dos dados e coloque num mesmo gráfico a curva empírica e a curva teórica utilizada para gerar os gráficos.
 
 ```{r, echo=FALSE, fig.align='center', out.width="80%"}
 # boxplot
@@ -197,7 +358,9 @@ sort(x) %>% plot(fes(.), type="s", ylab="P(X>x)", xlab="x")
 curve(fts, add=TRUE, col="red", lwd=2)
 ```
 
-(b) Faça um gráfico de quantis ( QQPlot) comparando os quantis empíricos com os quantis teóricos da distribuição Weibull utilizada para gerar os dados.
+## b)
+
+Faça um gráfico de quantis ( QQPlot) comparando os quantis empíricos com os quantis teóricos da distribuição Weibull utilizada para gerar os dados.
 
 ```{r, echo=FALSE, fig.align='center', out.width="80%"}
 # função teorica quantilica
@@ -208,7 +371,9 @@ qqplot(dfp(ppoints(x)), x, xlab = "Theoretical Distribution",
 ```
 
 
-(c) Padronize os dados (ou seja, subtraia a média amostral e divida pelo desvio padrão) e faça um gráfico de quantis ( \$Q Q\$ Plot ) comparando os quantis empíricos da variável padronizada com os da normal padrão. Discuta a adequabilidade da distribuição normal aos dados.
+## c) 
+
+Padronize os dados (ou seja, subtraia a média amostral e divida pelo desvio padrão) e faça um gráfico de quantis ( \$Q Q\$ Plot ) comparando os quantis empíricos da variável padronizada com os da normal padrão. Discuta a adequabilidade da distribuição normal aos dados.
 
 ```{r, echo=FALSE, fig.align='center', out.width="80%"}
 sx <- (x - mean(x))/sd(x)
@@ -219,13 +384,13 @@ qqline(sx)
 O gráfico Normal QQPlot mostra no eixo y os quantis da amostra padronizada, isto é, as estatísticas de ordem da amostra padronizada e, no eixo x, os quantis teóricos de uma normal padrão. Se a amostra é retirada de uma população normal, os pontos deveriam cair próximos da linha diagonal. Nota-se pelo gráfico que os pontos desviam-se um pouco da linha nas extremidades, entretanto um desvio um pouco maior nas extremidades é esperado. Com isso, apesar de saber de qual distribuição foi tirada a amostra, o gráfico não descarta-se a adequabilidade da distribuição normal aos dados.
 
 
-(d) Repita os itens (b) e (c) para $n=40, n=300$ e $n=1200$.
+## d) 
+
+Repita os itens (b) e (c) para $n=40, n=300$ e $n=1200$.
 
 
 
 ```{r, echo=FALSE, fig.asp=1, out.width="49%"}
-# fig.dim = c(5,5), fig.ncol=2, out.height = NULL, out.width="50%", fig.align = 'left'
-
 gerar_graficos <- function(n){
   # amostra aleatória da distribuição
   x <- rweibull(n, shape=rho, scale = 1/lambda^(1/rho))

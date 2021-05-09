@@ -1,0 +1,164 @@
+---
+title: "P2"
+author: |
+   
+   | Bruno de Castro Paul Schultze \thanks{Número USP: 10736862}
+   | Rubens  \thanks{Número USP: 10736862}
+header-includes:
+   - \usepackage{titling}
+   - \thanksmarkseries{arabic}
+   - \usepackage[brazil]{babel}
+   - \usepackage{float}
+   - \floatplacement{figure}{H}
+   - \usepackage{indentfirst}
+   - \usepackage{amsmath}
+   - \usepackage{pdfpages}
+   - \usepackage{tocloft}
+   - \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+output: 
+  pdf_document: 
+    fig_caption: yes
+    number_sections: no
+    toc: true
+    toc_depth: 3
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+# paramentros padrao para os plots
+knitr::opts_chunk$set(fig.width = '\\textwidth',
+                      fig.align = 'center',
+                      out.width = "\\textwidth",
+                      warning = FALSE)
+
+
+library(knitr)
+library(stargazer)
+library(tidyverse)
+library(car)
+library(readxl)
+library(MASS)
+```
+
+\clearpage
+
+
+\includepdf[pages=1,scale=.8,pagecommand={\section{Questões 1 a 4}\label{pdf:q1_q4}},linktodoc=true]{q1_q4.pdf}
+\includepdf[pages=2-,scale=.8,pagecommand={},linktodoc=true]{q1_q4.pdf}
+
+# Questão 5
+## 5.a
+
+Temos que:
+$$Y_A = \ln(T_A) = 2 + 2W$$
+$$Y_B = \ln(T_B) = 2,5 + 2W$$
+Assim, sendo:
+$$W = \frac{\ln(T_A) - 2}{2}$$
+$$T_A = \exp\{2 + 2W\}$$
+
+Podemos então escrever:
+
+$$S_A(t) = P(T_A > t) = P(\exp\{2 + 2W\} > t) = P(W > \frac{ln(T_A) - 2}{2})$$
+Então:
+$$S_A(t) = S_W(\frac{ln(T_A) - 2}{2}) = \exp\{- e^{\frac{ln(T_A) - 2}{2}}\}$$
+$$\leftrightarrow S_A(t) = \exp\{- \sqrt{t} . e^{-1}\}$$
+Analogamente:
+$$S_B(t) = \exp\{- \sqrt{t} . e^{- \frac{2,5}{2}}\}$$
+
+## 5.b
+Agora temos simplesmente que calcular $S_A(t)$ e $S_B(t)$ para t igual a 6, 12, 24 e 60 (pois t está em meses).
+Assim:
+
+```{r, echo = T}
+t = c(6, 12, 24, 60)
+library(dplyr)
+library(knitr)
+data.frame(t) %>% mutate(
+   S_A = exp(- (sqrt(t) * exp(-1))),
+   S_B = exp(- (sqrt(t) * exp(-(2.5/2))))
+   ) %>% kable(col.names = c('t', '$S_A(t)$', '$S_B(t)$'), digits = 3) 
+```
+
+Podemos notar então que para todo t testado, $S_B(t) > S_A(t)$.
+
+## 5.c
+A partir da questão 1 podemos tirar a relação:
+$$\alpha(t) = \frac{d}{dt}[- ln \ S(t)]$$
+
+Assim:
+
+$$\alpha_A(t) = \frac{d}{dt}(\sqrt{t} . e^{-1}) = \frac{1}{2e\sqrt{t}}$$
+$$\alpha_A(t) = \frac{d}{dt}(\sqrt{t} . e^{- \frac{2,5}{2}}) = \frac{1}{2e^{\frac{2,5}{2}}\sqrt{t}}$$
+
+```{r}
+t = c(6, 12, 24, 60)
+library(dplyr)
+library(knitr)
+data.frame(t) %>% mutate(
+   alp_a = 1/(2 * exp(1) * sqrt(t)),
+   alp_b = 1/(2 * exp(2.5/2) * sqrt(t)),
+   razao = alp_a/alp_b
+   ) %>% kable(col.names = c('t', '$\\alpha_A(t)$', 
+                             '$\\alpha_B(t)$', 
+                             '$\\frac{\\alpha_A}{\\alpha_B}$'), digits = 3)
+```
+
+Notemos então que a razão é a mesma para todo t analisado.
+
+## 5.d
+
+Se W tem uma distribuição normal padrão, sendo $\Phi(w)$ a função de distribuição acumulada, seguindo os mesmos passos de 5.a temos que:
+$$1 - F_A(t) = 1 - \Phi(\frac{ln(t) - 2}{2})$$
+$$\therefore S_A(t) =  1 - \Phi(c)$$
+Analogamente:
+$$ S_B(t) = 1 - \Phi(\frac{ln(t) - 2,5}{2})$$
+
+## 5.e
+
+A função _pnorm(x)_ nos dá $\Phi(x)$. 
+
+```{r, echo = T}
+t = c(6, 12, 24, 60)
+library(dplyr)
+library(knitr)
+data.frame(t) %>% mutate(
+   S_A = 1 - pnorm((log(t) - 2)/2),
+   S_B = 1 - pnorm((log(t) - 2.5)/2)
+   ) %>% kable(col.names = c('t', '$S_A(t)$', '$S_B(t)$'), digits = 3) 
+```
+
+Notemos que, novamente, $S_B(t) > S_A(t)$ para todos os t analisados.
+
+## 5.f
+
+Para facilitar, ao inves da relação usada em 5.c, vamos usar a relação:
+$$\alpha(t) = \frac{f(t)}{S(t)}$$
+No livro "Introduction to the Theory of Statistics", de Mood, Graybill e Boes, aprendemos que se $Y = g(X)$ então (dadas algumas condições generosas, que são respeitadas aqui):
+$$f_Y(y) = |\frac{d}{dy}g^{-1}(y)|f_x(g^{-1}(y))$$
+Assim:
+$$f_A(t) = |\frac{d}{dt} \frac{ln(t) - 2}{2}| \ .\ \Phi(\frac{ln(t) - 2}{2})$$
+$$\therefore f_A(t) =  \frac{1}{2t}\ f_W(\frac{ln(t) - 2}{2})$$
+
+Analogamente:
+$$f_B(t) =  \frac{1}{2t}\ f_W(\frac{ln(t) - 2,5}{2})$$
+
+Assim, conseguimos $\alpha(t)$ usando a relação já mostrada aqui:
+$$\alpha(t) = \frac{f(t)}{S(t)}$$
+
+Dessa forma, sabendo que _dnorm(x)_ é $f_W(x)$ tendo W uma distribuição normal padrão:
+
+```{r}
+t = c(6, 12, 24, 60)
+library(dplyr)
+library(knitr)
+data.frame(t) %>% mutate(
+   alp_a = ((1/(2*t))*(dnorm((log(t) - 2)/(2))))/(1 - pnorm((log(t) - 2)/2)),
+   alp_b = ((1/(2*t))*(dnorm((log(t) - 2.5)/(2))))/(1 - pnorm((log(t) - 2.5)/2)),
+   razao = alp_a/alp_b
+   ) %>% kable(col.names = c('t', '$\\alpha_A(t)$', 
+                             '$\\alpha_B(t)$', 
+                             '$\\frac{\\alpha_A}{\\alpha_B}$'), digits = 3)
+```
+
+Portanto, diferentemente de antes, a razão entre as funções de taxa não é mais igual para os diferentes t testados, $\alpha_A(t) > \alpha_B(t)$ e a função decresce quando t aumenta.
