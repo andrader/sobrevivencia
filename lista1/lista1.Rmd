@@ -275,11 +275,12 @@ df %>%
   geom_line(aes(y=s, color="S"),size=1)+
   facet_grid(vars(rho),vars(lambda), scales = 'free_y', 
              labeller = function(x) label_parsed(label_both(x)))+
-  ylab("")+ylim(0,1)+
+  # ylab("")+
+  ylim(0,1)+
   scale_color_discrete(
-    name="",labels=c("S"="S(t)", "alpha"=expression(alpha(t))))+
+    name="",labels=c("S"=expression(S(t)), "alpha"=expression(alpha(t))))+
   scale_y_continuous(
-    name = "S(t)",
+    name = expression(S(t)),
     # Add a second axis and specify its features
     sec.axis = sec_axis(~.*coef, name=expression(alpha(t)))
   ) + 
