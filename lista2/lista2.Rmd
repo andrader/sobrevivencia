@@ -1,0 +1,92 @@
+---
+title: "MAE0514 - Introducão a Análise de Sobrevivência - Lista 2"
+author: |
+  | Bruno de Castro Paul Schultze\thanks{Número USP: 10736862}
+  | Rubens Santos Andrade Filho\thanks{Número USP: 10370336}
+date: "`r stringr::str_to_sentence(format(Sys.time(), '%B de %Y'))`"
+lang: pt-BR
+header-includes:
+  # - \usepackage[brazilian]{babel} # ja usando lang: pt-BR
+  - \usepackage{float}
+  - \usepackage{amsmath}
+  - \usepackage{amsthm}
+  - \floatplacement{figure}{H}
+  - \usepackage{indentfirst}
+  - \setlength{\parindent}{4em}
+  - \setlength{\parskip}{1em}
+  - \usepackage{booktabs}
+  - \usepackage{dcolumn}
+  - \usepackage{bm}
+  - \usepackage{titling}
+  - \thanksmarkseries{arabic} % \thanks footnotes com numeros
+  - \usepackage[bottom]{footmisc} % corrige posição footnotes
+  - \usepackage{pdfpages}
+  - \usepackage{tocloft}
+  - \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+  - \usepackage{amssymb}
+  - \renewcommand\qedsymbol{$\blacksquare$}
+  - \usepackage{pdfpages}
+  - \usepackage{cleveref}
+  - \usepackage{threeparttable}
+output:
+  pdf_document: 
+    fig_caption: yes
+    number_sections: no
+    toc: true
+    toc_depth: 3
+---
+
+\pagebreak
+
+\newcommand\invisiblesection[1]{%
+  \refstepcounter{section}%
+  \addcontentsline{toc}{section}{#1}%
+  \sectionmark{#1}}
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(warning=FALSE, 
+                      # fig.dim = c(5,5),
+                      # out.height = '40%',
+                      # fig.align = 'center',
+                      message=FALSE
+                      )
+
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+library(extRemes) # bandas de confiança nos qqplot
+```
+
+\clearpage
+
+# Questão 1
+
+
+a)
+
+A variável do estudo é o tempo compreendido da exposição a um material cancerígeno até o desenvolvimento do tumor de um tamanho determinado nos ratos. Nesse caso, a origem é a exposição a um material cancerígeno e o evento de interesse é o desenvolvimento do tumor de um tamanho determinado.
+
+b)
+
+Para os rato A, B e C foram observados os tempos de falha, isto é, os tempos até os ratos desenvolverem o tumor de determinado tamanho. 
+
+Para o rato D foi observado uma censura aleatória à direita na vigésima semana, sua morte. Até a semana 20 o rato não tinha desenvolvido o tumor de um tamanho determinado.
+
+Para os ratos E e F foram observados censuras à direita do tipo I na semana 30 por ser a do estudo. Entretanto no enunciado não está claro se todos os ratos foram expostos ao material cancerígeno ao mesmo tempo para dizermos se a censura é generalizada ou não.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
