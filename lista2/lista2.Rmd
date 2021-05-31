@@ -55,7 +55,7 @@ knitr::opts_chunk$set(warning=FALSE,
 library(tidyverse)
 library(ggplot2)
 library(knitr)
-library(extRemes) # bandas de confiança nos qqplot
+# library(extRemes) # bandas de confiança nos qqplot
 ```
 
 \clearpage
@@ -80,6 +80,131 @@ Para os ratos E e F foram observados censuras à direita do tipo I na semana 30 
 
 
 # Questão 3
+
+Em um estudo clínico realizado com pacientes com câncer gástrico avançado (com metástase linfodonal), uma quimioterapia com Xeloda (capecipabina) e oxaliplatina foi administrada antes da cirurgia de 48 pacientes. Nesse tipo de ensaio clínico, é de interesse estudar e avaliar o tempo livre da doença, que é o tempo que o paciente fica bem, vivo e sem a doença. Assim, um dos objetivos é estudar o tempo decorrido entre o início do tratamento e óbito ou progressão da doença (o que ocorrer primeiro). Os dados do tempo livre da doença (em semanas) dos 48 pacientes estão disponíveis no arquivo `Lista2-Xelox.csv`, sendo que a variável delta é codificada como sendo 1 se o evento ocorreu e 0 se a observação é censurada.
+
+(a) Calculamos o estimador da tábua de vida, considerando as seguintes faixas de tempo:
+
+\begin{tabular}{|ll|}
+\hline Faixa 1: & 8 semanas (inclusive) ou menos \\
+Faixa 2: & de 8 a 16 semanas (inclusive) \\
+Faixa 3: & de 16 a 24 semanas (inclusive) \\
+Faixa 4: & de 24 a 32 semanas (inclusive) \\
+Faixa 5: & de 32 a 44 semanas (inclusive) \\
+Faixa 6: & de 44 a 56 semanas (inclusive) \\
+Faixa 7: & mais de 56 semanas \\
+\hline
+\end{tabular}
+
+Dessa forma, consideramos os intervalos fechados à direita.
+
+```{r}
+library(readr)
+library(dplyr)
+
+dados_raw <- readr::read_csv2('data/Lista2-Xelox.csv')
+
+# limites dos intervalos
+breaks <- c(0,8,16,24,32,44,56, Inf)
+
+dados <- dados_raw %>% 
+  mutate(
+    # define as faixas
+    intervalo = cut(timeWeeks, breaks=breaks, right=TRUE),
+    j = as.integer(intervalo)
+  )
+
+tabua <- dados %>% 
+  group_by(intervalo, j) %>% 
+  summarise(
+    # numero de falhas no intervalo
+    d = sum(delta),
+    # numero de censuras no intervalo
+    w = sum(delta==0)
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+    # numero de obs em risco, que nao falharam até o fim do intervalo anterior
+    n_estrela = sum(d+w) - cumsum(d+w) +w+d,
+    # corrigindo o numero de ind. em risco
+    n = n_estrela - w/2,
+    # prop. de falhas no intervalo
+    q_hat = d/n,
+    p_hat = 1 - q_hat,
+    # na tabua de vida, a estimativa de S do 1o intervalo = 1
+    # depois o produtorio acumulado dos p_i
+    s_hat = c(1, cumprod(p_hat)[-n()])
+  )
+
+tabua
+```
+
+```{r}
+# library(KMsurv)
+# fitlt =  lifetab(breaks, 48, nlost = tab$w , nevent = tab$d)
+
+x = rep(breaks, each=2)[2:15]
+x[length(x)] <- 100 # substitui infinito
+y = rep(tabua$s_hat, each=2)
+
+plot(x, y, type="l", col=4, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
+     main = "Estimativa da função de sobrevivência pela tábua de vida", cex=.6)
+```
+
+
+Chama a a tenção o fato da estimativa da função de sobrevivência não se aproximar de 0 à medida que aumentam o número de semanas. Isso acontece principalmente devido às 11 observações censuradas no último intervalo. 
+
+
+
+(b) Calcule o estimador Kaplan-Meier para os dados (você pode utilizar um software).
+
+
+```{r}
+library(survival)
+
+sfit <- survfit(Surv(dados$timeWeeks, dados$delta)~1, data=dados)
+
+summary(sfit)
+
+plot(sfit,xmax=100, main="Estimativa da função de sobrevivência por Kaplan-Meier")
+```
+
+
+(c) Coloque em um mesmo gráfico as duas curvas estimadas nos itens anteriores. Compare as curvas e comente.
+
+```{r}
+plot(sfit,xmax=100, main="Estimativas da função de sobrevivência", conf.int = F)
+lines(x, y, type="l", col=4)
+legend("topright",legend=c("Kaplan-Meier","Tábua de vida"),lty = c(1, 1),
+       col = c(1,4), bty="n")
+```
+
+O método de Kaplan-Meier melhora visualmente a estimativa da curva da função de sobrevivencia, principalmente nas semanas >= 56, onde o número de censuras é maior. Além disso, enquanto que a tábua de vida 
+
+
+```{r}
+kmeier <- dados_raw %>%
+  group_by(t=timeWeeks) %>%
+  # numero de eventos e censuras em cada t
+  summarise(d = sum(delta), w=sum(delta==0)) %>% 
+  ungroup() %>% 
+  mutate(
+    # numero de individuos vivos até antes de cada instante t
+    Y = sum(d+w) - (cumsum(d+w) - (d+w)),
+    # estimate of the conditional probability that an individual who survives 
+    # to just prior to time ti experiences the event at time ti
+    q = d/Y,
+    # estimate of surv function
+    s_hat = cumprod(1 - q)
+  ) %>% 
+  filter(d!=0)
+
+
+x <- c(0, rep(kmeier$t, each=2), 100)
+y <- c(1, 1, rep(kmeier$s_hat, each=2))
+plot(x, y, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
+     main = "Estimativa da função de sobrevivência por Kaplan-Meier", cex=.6)
+```
 
 
 # Questão 4
