@@ -44,7 +44,6 @@ output:
   \sectionmark{#1}}
 
 ```{r setup, include=FALSE}
-
 knitr::opts_chunk$set(warning=FALSE, 
                       # fig.dim = c(5,5),
                       # out.height = '40%',
@@ -55,7 +54,8 @@ knitr::opts_chunk$set(warning=FALSE,
 library(tidyverse)
 library(ggplot2)
 library(knitr)
-# library(extRemes) # bandas de confiança nos qqplot
+library(readr)
+library(dplyr)
 ```
 
 \clearpage
@@ -99,23 +99,20 @@ Faixa 7: & mais de 56 semanas \\
 Dessa forma, consideramos os intervalos fechados à direita.
 
 ```{r}
-library(readr)
-library(dplyr)
+# QUESTAO 3a ----
 
 dados_raw <- readr::read_csv2('data/Lista2-Xelox.csv')
 
 # limites dos intervalos
 breaks <- c(0,8,16,24,32,44,56, Inf)
 
-dados <- dados_raw %>% 
+tabua <- dados_raw %>% 
   mutate(
     # define as faixas
-    intervalo = cut(timeWeeks, breaks=breaks, right=TRUE),
-    j = as.integer(intervalo)
-  )
-
-tabua <- dados %>% 
-  group_by(intervalo, j) %>% 
+    intervalo = cut(timeWeeks, breaks=breaks, right=TRUE, include.lowest = T),
+    i = as.integer(intervalo)
+  ) %>% 
+  group_by(intervalo, i) %>% 
   summarise(
     # numero de falhas no intervalo
     d = sum(delta),
@@ -130,59 +127,48 @@ tabua <- dados %>%
     n = n_estrela - w/2,
     # prop. de falhas no intervalo
     q_hat = d/n,
-    p_hat = 1 - q_hat,
     # na tabua de vida, a estimativa de S do 1o intervalo = 1
     # depois o produtorio acumulado dos p_i
-    s_hat = c(1, cumprod(p_hat)[-n()])
+    s_hat = c(1, cumprod(1 - q_hat)[-n()])
   )
 
-tabua
+
 ```
 
-```{r}
-# library(KMsurv)
-# fitlt =  lifetab(breaks, 48, nlost = tab$w , nevent = tab$d)
 
+```{r, echo=FALSE}
+tabua %>%
+  kable(
+    caption = "Estimativas da tábua de vida.", 
+    col.names = c(
+      "Semanas","$i$","$d_i$","$w_i$",
+      "$n*$","$n$", 
+      "$q_i$",
+      "$\\hat{S}(t)$"))
+
+
+```
+
+```{r, echo=FALSE}
 x = rep(breaks, each=2)[2:15]
 x[length(x)] <- 100 # substitui infinito
 y = rep(tabua$s_hat, each=2)
 
 plot(x, y, type="l", col=4, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
      main = "Estimativa da função de sobrevivência pela tábua de vida", cex=.6)
+
+
 ```
 
 
-Chama a a tenção o fato da estimativa da função de sobrevivência não se aproximar de 0 à medida que aumentam o número de semanas. Isso acontece principalmente devido às 11 observações censuradas no último intervalo. 
+Chama a atenção o fato da estimativa da função de sobrevivência não se aproximar de 0 à medida que aumentam o número de semanas. Isso acontece principalmente devido às 11 observações censuradas que ficaram no último intervalo, isto é, temos menos muito menos informação a respeito das falhas nesse intervalo.
 
 
 
 (b) Calcule o estimador Kaplan-Meier para os dados (você pode utilizar um software).
 
-
-```{r}
-library(survival)
-
-sfit <- survfit(Surv(dados$timeWeeks, dados$delta)~1, data=dados)
-
-summary(sfit)
-
-plot(sfit,xmax=100, main="Estimativa da função de sobrevivência por Kaplan-Meier")
-```
-
-
-(c) Coloque em um mesmo gráfico as duas curvas estimadas nos itens anteriores. Compare as curvas e comente.
-
-```{r}
-plot(sfit,xmax=100, main="Estimativas da função de sobrevivência", conf.int = F)
-lines(x, y, type="l", col=4)
-legend("topright",legend=c("Kaplan-Meier","Tábua de vida"),lty = c(1, 1),
-       col = c(1,4), bty="n")
-```
-
-O método de Kaplan-Meier melhora visualmente a estimativa da curva da função de sobrevivencia, principalmente nas semanas >= 56, onde o número de censuras é maior. Além disso, enquanto que a tábua de vida 
-
-
-```{r}
+```{r, echo=FALSE}
+# QUESTAO 3b ----
 kmeier <- dados_raw %>%
   group_by(t=timeWeeks) %>%
   # numero de eventos e censuras em cada t
@@ -200,11 +186,48 @@ kmeier <- dados_raw %>%
   filter(d!=0)
 
 
-x <- c(0, rep(kmeier$t, each=2), 100)
-y <- c(1, 1, rep(kmeier$s_hat, each=2))
-plot(x, y, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
-     main = "Estimativa da função de sobrevivência por Kaplan-Meier", cex=.6)
 ```
+
+
+```{r, echo=FALSE}
+kmeier %>% 
+  kable(
+    caption = "Estimativas de Kaplan-Meier.", 
+    col.names = c(
+      "Semana","$d_i$","$w_i$",
+      "$Y_i$", 
+      "$q_i=d_i/Y_i$", 
+      "$\\hat{S}(t)$"))
+
+
+```
+
+
+```{r, echo=FALSE}
+x_km <- c(0, rep(kmeier$t, each=2), 100)
+y_km <- c(1, 1, rep(kmeier$s_hat, each=2))
+plot(x_km, y_km, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
+     main = "Estimativa da função de sobrevivência por Kaplan-Meier", cex=.6)
+
+
+```
+
+
+(c) Coloque em um mesmo gráfico as duas curvas estimadas nos itens anteriores. Compare as curvas e comente.
+
+```{r, echo=FALSE}
+# QUESTAO 3c ----
+plot(x_km, y_km, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
+     main = "Estimativas da função de sobrevivência", cex=.6)
+lines(x, y, type="l", col=4)
+legend("topright",legend=c("Kaplan-Meier","Tábua de vida"),lty = c(1, 1),
+       col = c(1,4), bty="n")
+
+
+```
+
+O método de Kaplan-Meier é o método da tábua de vida quando o o número de intervalos é o número de instantes únicos nos dados e os tamanhos dos intervalos são os tempos. Nota-se que o método de Kaplan-Meier melhora visualmente a estimativa da curva da função de sobrevivencia, principalmente após a semana 56, onde o número de censuras é maior e ficaram todas no último intervalo da tábua de vida todas
+
 
 
 # Questão 4
@@ -221,3 +244,8 @@ plot(x, y, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1
 
 # Questão 8
 
+
+# Código Completo
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
