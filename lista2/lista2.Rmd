@@ -56,6 +56,8 @@ library(ggplot2)
 library(knitr)
 library(readr)
 library(dplyr)
+
+
 ```
 
 \clearpage
@@ -73,7 +75,7 @@ Para os rato A, B e C foram observados os tempos de falha, isto é, os tempos at
 
 Para o rato D foi observado uma censura aleatória à direita na vigésima semana, sua morte. Até a semana 20 o rato não tinha desenvolvido o tumor de um tamanho determinado.
 
-Para os ratos E e F foram observados censuras à direita do tipo I na semana 30 por ser a do estudo. Entretanto no enunciado não está claro se todos os ratos foram expostos ao material cancerígeno ao mesmo tempo para dizermos se a censura é generalizada ou não.
+Para os ratos E e F foram observados censuras à direita do tipo I na semana 30 por ser a duração do estudo. Ademais, apenas com as informações do enunciado não é possível dizer se todos os ratos foram expostos ao material cancerígeno ao mesmo tempo para sabermos se a censura é generalizada ou não.
 
 
 # Questão 2
@@ -247,13 +249,15 @@ Observe que 10 observações foram censuradas. Para este exercício, os cálculo
 (a) a função de sobrevivência estimada por Kaplan-Meier;
 
 ```{r}
-# QUESTAO 5a
+# QUESTAO 5a ----
 
+# dados
 dados <- tibble(
   t = c(0.19, 0.78, 0.96, 1.31, 2.78, 3.16, 4.67, 4.85, 
         6.50, 7.35, 8.27, 12.07, 32.52, 33.91, 36.71),
   delta = 1
   ) %>% 
+  # censuras
   add_row(t= rep(36.71, 10), delta = 0)
 
 kmeier <- dados %>%
@@ -272,6 +276,7 @@ kmeier <- dados %>%
   ) %>% 
   filter(d!=0)
 
+
 ```
 
 ```{r, echo=FALSE}
@@ -287,13 +292,23 @@ kmeier %>%
 
 ```
 
+```{r, echo=FALSE}
+x_km <- c(0, rep(kmeier$t, each=2), 40)
+y_km <- c(1, 1, rep(kmeier$s_hat, each=2))
+plot(x_km, y_km, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
+     main = "Estimativa da função de sobrevivência por Kaplan-Meier", cex=.6)
+
+
+```
+
+
 
 (b) uma estimativa para o tempo mediano de vida deste tipo de isolante elétrico funcionando a essa tensão;
 
-Para a vida mediana, nós vemos que $\hat{S}(12,07)=0,52$ e $\hat{S}(32,52)=0,48$, entao o tempo mediano se encontra entre esses dois tempos. Por interpolação linear
+Para a vida mediana, nós vemos que $\hat{S}(12.07)=0.52$ e $\hat{S}(32.52)=0.48$, então o tempo mediano se encontra entre esses dois tempos. Por interpolação linear,
 
 ```{r}
-# QUESTAO 5b
+# QUESTAO 5b ----
 
 t0 = 12.07
 t1 = 32.52
@@ -303,20 +318,82 @@ s1 = kmeier$s_hat[which(kmeier$t==t1)]
 s=0.5
 t_mediano = t0 + (t1-t0)*(s-s0)/(s1-s0)
 t_mediano
+
+
 ```
-Encontramos um tempo de vida mediano igual a 22,295.
+encontramos um tempo de vida mediano igual a 22.295.
+
+
 
 (c) uma estimativa (pontual e intervalar) para a fração de defeituosos esperada nos dois primeiros minutos de funcionamento;
 
+Observemos que $t_0=1.31 < 2 < 2.78=t_1$. Com isso, usando interpolação linear,
 ```{r}
+# QUESTAO 5c ----
 
+t0 = 1.31
+t1 = 2.78
+s0 = kmeier$s_hat[which(kmeier$t==t0)]
+s1 = kmeier$s_hat[which(kmeier$t==t1)]
+
+# do item anterior:
+#  t(s) = t0 + (t1-t0)*(s-s0)/(s1-s0)
+# então s(t):
+#  s = (t-t0)*(s1-s0)/(t1-t0) + s0
+t=2
+s_hat = (t-t0)*(s1-s0)/(t1-t0) + s0
+c(s_hat, 1-s_hat)
 
 
 ```
+Obtemos que $\hat{S}(2) \approx 0.82$, logo $1-\hat{S}(2)=0.18$ é uma estimativa pontual para a fração de defeituosos esperada nos dois primeiros minutos de funcionamento.
+
+Uma estimativa intervalar pode ser obtida com
+
+$$
+\begin{aligned}
+IC\left(S(t)); \gamma \right) &= \left( 
+\hat{S}(t) - z_{\gamma / 2}\sqrt{\widehat{\operatorname{Var}}\left( \hat{S}(t)\right)};  
+\hat{S}(t) + z_{\gamma / 2}\sqrt{\widehat{\operatorname{Var}}\left( \hat{S}(t)\right)}
+\right) \\
+\Rightarrow
+IC\left(1-S(t)); \gamma \right) &= \left( 
+1-\hat{S}(t) - z_{\gamma / 2}\sqrt{\widehat{\operatorname{Var}}\left( \hat{S}(t)\right)};  
+1-\hat{S}(t) + z_{\gamma / 2}\sqrt{\widehat{\operatorname{Var}}\left( \hat{S}(t)\right)}
+\right) \\
+\end{aligned}
+$$
+onde 
+$$
+\widehat{\operatorname{Var}}(\hat{S}(t))=\left[\hat{S}(t)\right]^{2} \sum_{t_{(j)} \leq t} \frac{d_{j}}{\left.n_{j} ( n_{j}-d_{j}\right)}
+$$
+
+```{r}
+var_hat <- kmeier %>% filter(t<2) %>% 
+  summarise(
+    a = (!!s_hat)^2 * sum(d/(Y*(Y-d))) 
+  ) %>% pull()
+var_hat
+
+
+```
+Obtemos que $\widehat{\operatorname{Var}}(\hat{S}(2))=\widehat{\operatorname{Var}}(1-\hat{S}(2)) \approx 0.0051$. Portanto, uma estimativa intervalar, com 90% de confiança, para a fração de defeituosos esperada nos dois primeiros minutos de funcionamento é
+```{r}
+z <-  qnorm(0.95) # 1 - (1-gamma)/2
+round(c((1-s_hat) - z * sqrt(var_hat), (1-s_hat) + z * sqrt(var_hat)), 3)
+```
+
+$$
+IC\left(1-S(2)); 90\% \right) = [0.061; 0.297]
+$$
 
 
 
-(d) o tempo necessário para $20 \%$ dos isolantes estarem fora de operação.
+
+(d) o tempo necessário para 20% dos isolantes estarem fora de operação.
+
+Observando a tabela, vemos que uma estimativa do tempo necessário para 20% dos isolantes estarem fora de operação é 2.78 quando $\hat{S}(t)=0.80$. Caso não estivesse na tabela, poderiamos obter por interpolação linear como nos outros itens.
+
 
 
 # Questão 6
