@@ -117,7 +117,7 @@ tabua <- dados_raw %>%
     # numero de falhas no intervalo
     d = sum(delta),
     # numero de censuras no intervalo
-    w = sum(delta==0)
+    w = sum(1-delta)
   ) %>% 
   ungroup() %>% 
   mutate(
@@ -172,7 +172,7 @@ Chama a atenção o fato da estimativa da função de sobrevivência não se apr
 kmeier <- dados_raw %>%
   group_by(t=timeWeeks) %>%
   # numero de eventos e censuras em cada t
-  summarise(d = sum(delta), w=sum(delta==0)) %>% 
+  summarise(d = sum(delta), w=sum(1-delta)) %>% 
   ungroup() %>% 
   mutate(
     # numero de individuos vivos até antes de cada instante t
@@ -234,6 +234,89 @@ O método de Kaplan-Meier é o método da tábua de vida quando o o número de i
 
 
 # Questão 5
+
+Os dados mostrados a seguir representam o tempo até a ruptura de um tipo de isolante elétrico sujeito a uma tensão de estresse de 35 Kvolts. O teste consistiu em deixar 25 destes isolantes funcionando até que 15 deles falhassem (censura tipo II), obtendo-se os seguintes resultados (em minutos):
+\begin{tabular}{cccccccc}
+\hline \hline 0,19 & 0,78 & 0,96 & 1,31 & 2,78 & 3,16 & 4,67 & 4,85 \\
+6,50 & 7,35 & 8,27 & 12,07 & 32,52 & 33,91 & 36,71 & \\
+\hline \hline
+\end{tabular}
+Observe que 10 observações foram censuradas. Para este exercício, os cálculos podem ser feitos $\dot{a}$ mão ou com auxílio computacional, porém a ideia é não utilizar uma função pronta que calcule o que for pedido. Você deve usar uma planilha ou escrever o código que faça as contas no $\mathrm{R}$ ou outro software de sua preferência. A partir desses dados amostrais, deseja-se obter:
+
+
+(a) a função de sobrevivência estimada por Kaplan-Meier;
+
+```{r}
+# QUESTAO 5a
+
+dados <- tibble(
+  t = c(0.19, 0.78, 0.96, 1.31, 2.78, 3.16, 4.67, 4.85, 
+        6.50, 7.35, 8.27, 12.07, 32.52, 33.91, 36.71),
+  delta = 1
+  ) %>% 
+  add_row(t= rep(36.71, 10), delta = 0)
+
+kmeier <- dados %>%
+  group_by(t) %>%
+  # numero de eventos e censuras em cada t
+  summarise(d = sum(delta), w=sum(1-delta)) %>% 
+  ungroup() %>% 
+  mutate(
+    # numero de individuos vivos até antes de cada instante t
+    Y = sum(d+w) - (cumsum(d+w) - (d+w)),
+    # estimate of the conditional probability that an individual who survives 
+    # to just prior to time ti experiences the event at time ti
+    q = d/Y,
+    # estimate of surv function
+    s_hat = cumprod(1 - q)
+  ) %>% 
+  filter(d!=0)
+
+```
+
+```{r, echo=FALSE}
+kmeier %>% 
+  kable(
+    caption = "Estimativas de Kaplan-Meier.", 
+    col.names = c(
+      "Tempo","$d_i$","$w_i$",
+      "$Y_i$", 
+      "$q_i=d_i/Y_i$", 
+      "$\\hat{S}(t)$"))
+
+
+```
+
+
+(b) uma estimativa para o tempo mediano de vida deste tipo de isolante elétrico funcionando a essa tensão;
+
+Para a vida mediana, nós vemos que $\hat{S}(12,07)=0,52$ e $\hat{S}(32,52)=0,48$, entao o tempo mediano se encontra entre esses dois tempos. Por interpolação linear
+
+```{r}
+# QUESTAO 5b
+
+t0 = 12.07
+t1 = 32.52
+s0 = kmeier$s_hat[which(kmeier$t==t0)]
+s1 = kmeier$s_hat[which(kmeier$t==t1)]
+
+s=0.5
+t_mediano = t0 + (t1-t0)*(s-s0)/(s1-s0)
+t_mediano
+```
+Encontramos um tempo de vida mediano igual a 22,295.
+
+(c) uma estimativa (pontual e intervalar) para a fração de defeituosos esperada nos dois primeiros minutos de funcionamento;
+
+```{r}
+
+
+
+```
+
+
+
+(d) o tempo necessário para $20 \%$ dos isolantes estarem fora de operação.
 
 
 # Questão 6
