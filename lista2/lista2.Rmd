@@ -20,6 +20,7 @@ header-includes:
   - \usepackage{titling}
   - \thanksmarkseries{arabic} % \thanks footnotes com numeros
   - \usepackage[bottom]{footmisc} % corrige posição footnotes
+  - \usepackage{grffile}
   - \usepackage{pdfpages}
   - \usepackage{tocloft}
   - \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
@@ -78,8 +79,9 @@ Para o rato D foi observado uma censura aleatória à direita na vigésima seman
 Para os ratos E e F foram observados censuras à direita do tipo I na semana 30 por ser a duração do estudo. Ademais, apenas com as informações do enunciado não é possível dizer se todos os ratos foram expostos ao material cancerígeno ao mesmo tempo para sabermos se a censura é generalizada ou não.
 
 
-# Questão 2
 
+\includepdf[pages=1,scale=.8,pagecommand={\section{Questão 2}\label{pdf:q2}},linktodoc=true]{q2.pdf}
+\includepdf[pages=2-,scale=.8,pagecommand={},linktodoc=true]{q2.pdf}
 
 # Questão 3
 
@@ -256,7 +258,9 @@ O método de Kaplan-Meier é o método da tábua de vida quando o o número de i
 
 
 
-# Questão 4
+
+\includepdf[pages=1,scale=.8,pagecommand={\section{Questão 4}\label{pdf:q4}},linktodoc=true]{q4.pdf}
+\includepdf[pages=2-,scale=.8,pagecommand={},linktodoc=true]{q4.pdf}
 
 
 # Questão 5
@@ -397,7 +401,15 @@ Observando a tabela, vemos que uma estimativa do tempo necessário para 20% dos 
 
 
 # Questão 6
+## 6.a
 
+```{r}
+library(survival)
+library(survminer)
+q6 = read.table('data/Lista2_cancerLingua.txt')
+colnames(q6) = c('perfil','tempo','delta')
+q6_df = q6 %>% filter(perfil == 1)
+```
 
 # Questão 7
 
@@ -496,7 +508,8 @@ Obtivemos um valor p de 0.003, com isso, a um nível de 5%, rejeitamos a hipóte
 
 
 
-# Questão 8
+
+\includepdf[pages=1,scale=.8,pagecommand={\section{Questão 8}\label{pdf:q8}},linktodoc=true]{q8.pdf}
 
 
 # Código Completo
