@@ -171,46 +171,71 @@ Chama a atenção o fato da estimativa da função de sobrevivência não se apr
 
 ```{r, echo=FALSE}
 # QUESTAO 3b ----
-kmeier <- dados_raw %>%
-  group_by(t=timeWeeks) %>%
-  # numero de eventos e censuras em cada t
-  summarise(d = sum(delta), w=sum(1-delta)) %>% 
-  ungroup() %>% 
-  mutate(
-    # numero de individuos vivos até antes de cada instante t
-    Y = sum(d+w) - (cumsum(d+w) - (d+w)),
-    # estimate of the conditional probability that an individual who survives 
-    # to just prior to time ti experiences the event at time ti
-    q = d/Y,
-    # estimate of surv function
-    s_hat = cumprod(1 - q)
-  ) %>% 
-  filter(d!=0)
+
+# vamos criar uma funcao para calcular as estimativas de Kaplan-Meier
+estimar_km <- function(dados, tempo, delta) {
+  dados %>%
+    # agrupa para cada tempo unico
+    group_by(t={{ tempo }}) %>%
+    # numero de eventos e censuras em cada t
+    summarise(d = sum({{ delta }}), w=sum(1-{{ delta }})) %>% 
+    ungroup() %>% 
+    mutate(
+      # numero de individuos vivos até antes de cada instante t
+      Y = sum(d+w) - (cumsum(d+w) - (d+w)),
+      # estimate of the conditional probability that an individual who survives 
+      # to just prior to time ti experiences the event at time ti
+      q = d/Y,
+      # estimate of surv function
+      s_hat = cumprod(1 - q)
+    ) %>% 
+    filter(d!=0)
+}
+
+tabela_km <- function(estimativa_km, caption="Estimativas de Kaplan-Meier.",
+                      col.names = c("Tempo","$d_i$","$w_i$","$Y_i$", 
+                                    "$q_i=d_i/Y_i$", "$\\hat{S}(t)$"), 
+                      ...) {
+  estimativa_km %>% kable(caption=caption, col.names=col.names, ...)
+}
+
+# calcula estimativas
+estimativas <- dados_raw %>% estimar_km(timeWeeks, delta)
 
 
 ```
 
 
 ```{r, echo=FALSE}
-kmeier %>% 
-  kable(
-    caption = "Estimativas de Kaplan-Meier.", 
-    col.names = c(
-      "Semana","$d_i$","$w_i$",
-      "$Y_i$", 
-      "$q_i=d_i/Y_i$", 
-      "$\\hat{S}(t)$"))
-
+estimativas %>% tabela_km()
 
 ```
 
 
 ```{r, echo=FALSE}
-x_km <- c(0, rep(kmeier$t, each=2), 100)
-y_km <- c(1, 1, rep(kmeier$s_hat, each=2))
-plot(x_km, y_km, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
-     main = "Estimativa da função de sobrevivência por Kaplan-Meier", cex=.6)
+plot_km <- function(
+  estimativa_km, x_max=NULL, type="l", col=1, xlab="Tempo",
+  ylab=expression(hat(S)),ylim = c(0,1),
+  main = "Estimativa da função de sobrevivência por Kaplan-Meier", cex=.6, add=FALSE) {
+  
+  if(is.null(x_max)){
+    x_max <- max(estimativa_km$t) * 1.10
+  }
+  
+  x_km <- c(0, rep(estimativa_km$t, each=2), x_max)
+  y_km <- c(1, 1, rep(estimativa_km$s_hat, each=2))
+  
+  if(add){
+    lines(x_km, y_km, type=type, col=col, xlab=xlab, ylab=ylab, 
+       ylim=ylim, main=main, cex=cex)
+  }else{
+    plot(x_km, y_km, type=type, col=col, xlab=xlab, ylab=ylab, 
+       ylim=ylim, main=main, cex=cex)
+  }
+  
+}
 
+plot_km(estimativas)
 
 ```
 
@@ -219,8 +244,7 @@ plot(x_km, y_km, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim =
 
 ```{r, echo=FALSE}
 # QUESTAO 3c ----
-plot(x_km, y_km, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
-     main = "Estimativas da função de sobrevivência", cex=.6)
+plot_km(estimativas,main = "Estimativas da função de sobrevivência")
 lines(x, y, type="l", col=4)
 legend("topright",legend=c("Kaplan-Meier","Tábua de vida"),lty = c(1, 1),
        col = c(1,4), bty="n")
@@ -260,43 +284,19 @@ dados <- tibble(
   # censuras
   add_row(t= rep(36.71, 10), delta = 0)
 
-kmeier <- dados %>%
-  group_by(t) %>%
-  # numero de eventos e censuras em cada t
-  summarise(d = sum(delta), w=sum(1-delta)) %>% 
-  ungroup() %>% 
-  mutate(
-    # numero de individuos vivos até antes de cada instante t
-    Y = sum(d+w) - (cumsum(d+w) - (d+w)),
-    # estimate of the conditional probability that an individual who survives 
-    # to just prior to time ti experiences the event at time ti
-    q = d/Y,
-    # estimate of surv function
-    s_hat = cumprod(1 - q)
-  ) %>% 
-  filter(d!=0)
+estimativas <- estimar_km(dados, t, delta)
 
 
 ```
 
 ```{r, echo=FALSE}
-kmeier %>% 
-  kable(
-    caption = "Estimativas de Kaplan-Meier.", 
-    col.names = c(
-      "Tempo","$d_i$","$w_i$",
-      "$Y_i$", 
-      "$q_i=d_i/Y_i$", 
-      "$\\hat{S}(t)$"))
+estimativas %>% tabela_km()
 
 
 ```
 
 ```{r, echo=FALSE}
-x_km <- c(0, rep(kmeier$t, each=2), 40)
-y_km <- c(1, 1, rep(kmeier$s_hat, each=2))
-plot(x_km, y_km, type="l", col=1, xlab="Semanas", ylab=expression(hat(S)),ylim = c(0,1),
-     main = "Estimativa da função de sobrevivência por Kaplan-Meier", cex=.6)
+estimativas %>% plot_km()
 
 
 ```
@@ -312,8 +312,8 @@ Para a vida mediana, nós vemos que $\hat{S}(12.07)=0.52$ e $\hat{S}(32.52)=0.48
 
 t0 = 12.07
 t1 = 32.52
-s0 = kmeier$s_hat[which(kmeier$t==t0)]
-s1 = kmeier$s_hat[which(kmeier$t==t1)]
+s0 = estimativas$s_hat[which(estimativas$t==t0)]
+s1 = estimativas$s_hat[which(estimativas$t==t1)]
 
 s=0.5
 t_mediano = t0 + (t1-t0)*(s-s0)/(s1-s0)
@@ -333,8 +333,8 @@ Observemos que $t_0=1.31 < 2 < 2.78=t_1$. Com isso, usando interpolação linear
 
 t0 = 1.31
 t1 = 2.78
-s0 = kmeier$s_hat[which(kmeier$t==t0)]
-s1 = kmeier$s_hat[which(kmeier$t==t1)]
+s0 = estimativas$s_hat[which(estimativas$t==t0)]
+s1 = estimativas$s_hat[which(estimativas$t==t1)]
 
 # do item anterior:
 #  t(s) = t0 + (t1-t0)*(s-s0)/(s1-s0)
@@ -369,7 +369,7 @@ $$
 $$
 
 ```{r}
-var_hat <- kmeier %>% filter(t<2) %>% 
+var_hat <- estimativas %>% filter(t<2) %>% 
   summarise(
     a = (!!s_hat)^2 * sum(d/(Y*(Y-d))) 
   ) %>% pull()
@@ -400,6 +400,100 @@ Observando a tabela, vemos que uma estimativa do tempo necessário para 20% dos 
 
 
 # Questão 7
+
+```{r}
+# QUESTAO 7 ----
+
+dados_raw <- readr::read_csv('data/pharmacoSmoking.csv')
+
+dados_grp <- dados_raw %>% group_by(grp) 
+lst_dados <- dados_grp %>% group_split()
+names(lst_dados) <- group_keys(dados_grp) %>% pull()
+
+# calcula estimativas para cada grupo
+lst_estimativas <- lst_dados %>% purrr::map(~estimar_km(., ttr, relapse)  )
+
+
+```
+
+a) Obtenha as curvas de Kaplan-Meier dos dois tratamentos;
+
+```{r}
+tabela_km(lst_estimativas[["combination"]], 
+          caption="Estimativas de Kaplan-Meier para combination.")
+tabela_km(lst_estimativas[["patchOnly"]], 
+          caption="Estimativas de Kaplan-Meier para patchOnly.")
+
+```
+
+```{r}
+
+plot_km(lst_estimativas[["combination"]])
+plot_km(lst_estimativas[["patchOnly"]], col=2, add=T)
+
+legend("topright",legend=c("Combination","PatchOnly"),lty = c(1, 1),
+       col = c(1,2), bty="n")
+
+```
+As estimativas de Kaplan-Meier são bem diferentes para os dois grupos como podemos notar pelas tabelas e gráfico.
+
+
+
+(b) Compare os tratamentos utilizando o teste de log-rank e também utilizando diferentes ponderações (escolha pelo menos três diferentes);
+
+Para esse item, vamos usar os pacotes `survival` para o modelo de sobrevivencia e `survminer` para realizar os testes. Realizamos o teste de log-rank e também usando diferentes ponderações: Gehan-Breslow (Wilcoxon generalizado), Peto-Peto e Fleming-Harrington(p=1, q=1).
+
+```{r}
+# QUESTAO 7b ----
+
+# install.packages(c("survival", "survminer"))
+library(survival)
+library(survminer)
+
+# modelo
+sfit <- survfit(Surv(ttr, relapse)~grp, data=dados_raw)
+
+bind_rows(
+  # teste de log rank
+  surv_pvalue(sfit, method = "log-rank"),
+  
+  # usando Gehan-Breslow (Wilcoxon generalizado)
+  surv_pvalue(sfit, method = "gehan-breslow"),
+  
+  # usando  Peto-Peto
+  surv_pvalue(sfit, method = "S1"),
+  
+  # usando Fleming-Harrington(p=1, q=1)
+  surv_pvalue(sfit, method = "FH_p=1_q=1"),
+) %>% 
+  dplyr::relocate(method) %>% 
+  dplyr::select(-pval.txt)
+
+
+```
+
+Em todos os testes o valor p deu significativo a um nível de 5%. Com isso, rejeitamos a hipótese nula de de que não existe diferença na curva de sobrevivência dos dois grupos.
+
+
+(c) Compare as curvas de Kaplan-Meier utilizando o teste de log-rank, estratificado por situação de trabalho (variável employment) e discuta os resultados.
+
+```{r, out.width="70%"}
+# QUESTAO 7c ----
+
+# modelo
+sfit <- survfit(Surv(ttr, relapse)~grp+strata(employment), data=dados_raw)
+
+ggsurvplot(sfit,dados_raw)+
+  labs(x="Tempo", y=expression(hat(S)(t)))
+
+```
+
+Fizemos o teste de log-rank do modelo estratificado por `employment`:
+```{r}
+survdiff(Surv(ttr, relapse)~grp+strata(employment), data=dados_raw)
+```
+Obtivemos um valor p de 0.003, com isso, a um nível de 5%, rejeitamos a hipótese nula de diferença nas curvas de sobrevivência entre os grupos, controlando pela situação de trabalho.
+
 
 
 # Questão 8
