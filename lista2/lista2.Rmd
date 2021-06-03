@@ -403,13 +403,71 @@ Observando a tabela, vemos que uma estimativa do tempo necessário para 20% dos 
 # Questão 6
 ## 6.a
 
-```{r}
+```{r, include = FALSE}
+# QUESTAO 6 ----
+# QUESTAO 6a ----
 library(survival)
 library(survminer)
 q6 = read.table('data/Lista2_cancerLingua.txt')
 colnames(q6) = c('perfil','tempo','delta')
 q6_df = q6 %>% filter(perfil == 1)
 ```
+
+Abaixo temos a saída com as estimativas de Kaplan-Meier.
+
+```{r, echo = FALSE}
+q6_km = survfit(Surv(tempo, delta) ~ 1,type = 'kaplan-meier', data = q6_df )
+summary(q6_km)
+```
+Notemos então que $\hat{S}(60) = 0.654$, com erro padrão $0.066$.
+Abaixo temos também o gráfico da função estimada de sobrevivência.
+
+```{r, echo = F}
+ggsurvplot(q6_km,q6_df, conf.int = FALSE)+
+  labs(x="Tempo", y=expression(hat(S)(t)))
+```
+
+## 6.c
+
+Abaixo temos a saída usando para os intervalos de confiança o método linear.
+
+```{r, echo = F}
+# QUESTAO 6c ----
+library("km.ci")
+out <- km.ci(q6_km, conf.level=0.95,  method="linear")
+summary(out)
+```
+
+Como visto na saída, o intervalo de confiança linear para $\hat{S}(60)$ é $[0.5245 \ ; \ 0.783 ]$
+
+## 6.e
+
+```{r, echo = F}
+# QUESTAO 6e ----
+q6_km2<-survfit(Surv(q6$tempo, q6$delta)~1, conf.type='plain',type = "kaplan-meier")
+out <- km.ci(q6_km2, conf.level=0.95,  method="epband") 
+plot(q6_km2, xlab = "Tempo", ylab = "Sobrevivência estimada", ylim = c(0,1), xlim = c(0, 170))
+lines(out, lty = 3, col = "red")
+legend("topright", c("Kaplan-Meier", "IC Pontual", "Bandas de Confiança"),
+       col = c("black", "black", "red"), lty = c(1,2,3), bty = "n")
+```
+
+Notemos então que a banda de confiança é sempre maior que o intervalo pontual.
+
+## 6.f
+
+```{r, echo = F}
+# QUESTAO 6f ----
+q6_km2<-survfit(Surv(q6$tempo, q6$delta)~1, conf.type='plain',type = "kaplan-meier")
+library("km.ci")
+out <- km.ci(q6_km2, conf.level=0.95,  method="hall-wellner") 
+plot(q6_km2, xlab = "Tempo", ylab = "Sobrevivência estimada", ylim = c(0,1), xlim = c(0, 170))
+lines(out, lty = 3, col = "red")
+legend("topright", c("Kaplan-Meier", "IC Pontual", "Hall-Wellner"),
+       col = c("black", "black", "red"), lty = c(1,2,3), bty = "n")
+```
+
+Notemos então que a banda de confiança de Hall-Wellner é sempre maior que o intervalo pontual.
 
 # Questão 7
 
