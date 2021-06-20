@@ -60,6 +60,32 @@ knitr::opts_chunk$set(warning=FALSE,
                       message=FALSE,
                       echo=FALSE
                       )
+
+
+
+# helper com padroes predefinidos
+ggsurv <- function(
+  fit, 
+  conf.int = T,
+  surv.median.line = "hv",
+  ggtheme = theme_bw(),
+  xlim=NULL,break.time.by = NULL,
+  risk.table = T, tables.height = 0.32,
+  legend='top', ...) {
+  
+  ggsurvplot(
+    fit,conf.int = conf.int,
+    surv.median.line = surv.median.line,
+    ggtheme = ggtheme,
+    xlim=xlim,
+    risk.table = risk.table, 
+    tables.height = tables.height,
+    break.time.by = break.time.by, 
+    legend=legend,
+    ...
+  )
+}
+
 ```
 
   
@@ -131,189 +157,79 @@ dados
 
 ## a) Análise descritiva, tempo de recuperação das plaquetas como desfecho
 
-Nesse item, fazemos uma análise descritiva dos dados considerando como desfecho ou variável resposta o tempo até recuperação das plaquetas, `prtime`. Começamos fazendo o gráfico com a estimativa de Kaplan-Meier para a curva de sobrevivência do tempo até recuperação das plaquetas.
+Nesse item, fazemos uma análise descritiva dos dados considerando como desfecho ou variável resposta o tempo até recuperação das plaquetas, `prtime`. Começamos fazendo o gráfico com a estimativa de Kaplan-Meier para a curva geral de sobrevivência do tempo até recuperação das plaquetas.
 
 ```{r}
 # QUESTÃO 2.a) geral ----
+surv <- with(dados,Surv(prtime, prstat))
 
-# ajuste
-s_plaq <- with(dados_raw,Surv(prtime, prstat))
-fit <- survfit(s_plaq~1, dados_raw)
-
-# grafico das estimativas
-ggsurvplot(
-  fit,
-  surv.median.line = "hv",
-  ggtheme = theme_bw(),
-  risk.table = T, tables.height = 0.32,
-  legend='none'
-)
-```
-
-Vemos no gráfico que a estivativa da curva de sobrevivência decai rapídamente nos primeiros 300 dias para pouco menos de 50%. De fato, observando os dados, vemos que o maior tempo observado de recuperação das plaquetas ocorre no dia 385, com isso estimaviva da curva de sobrevivência não decai mais a partir desse dia. Com isso, para observar melhor o que acontece no início da curva, fazemos novamente o mesmo gráfico, porém, apenas até pouco após o dia 385. 
-
-
-```{r}
-ggsurvplot(
-  fit,
-  surv.median.line = "hv",
-  ggtheme = theme_bw(),
-  xlim=c(0,400),
-  risk.table = T, tables.height = 0.32,
-  break.time.by = 50, 
-  legend='none'
-)
-
-```
-
-Agora, podemos ver claramente, seguindo a linha pontilhada, que o tempo de sobrevivência mediano é de 75 dias. Isto é, 75 dias é a estimativa do tempo decorrido após o transplante em que a probabilidade de recuperação é 50%. 
-
-```{r}
+fit <- survfit(surv~1, dados)
 print(fit)
+ggsurv(fit, xlim=c(0,400), break.time.by = 50)
 
-```
-
-Além disso, o número de observações é igual a 2204, número de recuperações observadas é 1169, e uma intervalar de 95% para o tempo mediano é $[56, 112]$ dias.
-
-
-A seguir, iremos análisar comparar o tempo de recuperação das plaquetas entre os níveis de cada fator `age`, `dissub`, `drmatch` e `tcd`. É interessante também análisar o tempo mediano de recuperação das plaquetas para cada nível dos fatores. A tabela a seguir mostra as estimativas pontual e intervalar dos tempos medianos geral e em cada nível de cada fator.
-
-```{r}
-fits <- list(
-  survfit(s_plaq ~ 1, dados_raw),
-  survfit(s_plaq ~ age, dados_raw),
-  survfit(s_plaq ~ dissub, dados_raw),
-  survfit(s_plaq ~ drmatch, dados_raw),
-  survfit(s_plaq ~ tcd, dados_raw)
-)
-
-
-fits %>% 
-  tbl_survfit(
-  probs = 0.5,
-  label_header = "**Tempo mediano**",
-  missing ="-",
-  label = list(
-    1 ~ "Geral"
-  )
-) %>%
-  #bold_labels() %>% 
-  italicize_levels() %>% 
-  modify_header(
-    update = list(
-      label ~ "**Variável**"
-    )
-  )
-
-```
-
-
-
-
-
-
-
-
-Começando pela idade, `age`, construimos o gráfico com as estimativas de Kaplan-Meier para a curva de sobrevivência para cada categoria ("<=20", "20-40" e ">40"). Novamente, para melhor visualizar as curvas, iremos mostrar até o dia 400, uma vez que as estimaivas das curvas são constantes depois disso.
-```{r}
 # QUESTÃO 2.a) age ----
-# ajuste
-fit <- survfit(s_plaq~age, dados_raw)
-
-# tabela com medidas resumo
+fit <- survfit(surv~age, dados)
 print(fit)
+ggsurv(fit, xlim=c(0,400), break.time.by = 50)
 
-# grafico das estimativas
-ggsurvplot(
-  fit,
-  surv.median.line = "hv",
-  ggtheme = theme_bw(),
-  xlim=c(0,400),
-  risk.table = T, tables.height = 0.32,
-  break.time.by = 50, 
-  legend='top'
-)
-
-```
-
-O gráfico mostra que os pacientes na faixa etária menor ou igual a 20 anos tem uma aparente menor estimativa da curva de sobrevivencia em relação às outras faixas etárias e em especial após o seu tempo mediano. Antes do tempo mediano, é dificil ver indícios de diferenças entre as curvas. Além disso, as estimativas intervalares (com confiança de 95%) para o tempo mediano se sobrepõem, com isso, não podemos dizer que existe diferença significativa entre os tempos medianos a um nível de 5%. entretanto, mais a frente, testaremos formalmente isso.
-
-Agora, fazemos a mesma análise com a covariável de Classificaçao da doença, `dissub`.
-
-```{r}
 # QUESTÃO 2.a) dissub ----
-# ajuste
-fit <- survfit(s_plaq~dissub, dados)
-
-# tabela com medidas resumo
+fit <- survfit(surv~dissub, dados)
 print(fit)
+ggsurv(fit, xlim=c(0,400), break.time.by = 50)
 
-# grafico das estimativas
-ggsurvplot(
-  fit,
-  surv.median.line = "hv",
-  ggtheme = theme_bw(),
-  xlim=c(0,400),
-  risk.table = T, tables.height = 0.32,
-  break.time.by = 50, 
-  legend='top'
-)
+# QUESTÃO 2.a) drmatch ----
+fit <- survfit(surv~drmatch, dados)
+print(fit)
+ggsurv(fit, xlim=c(0,400), break.time.by = 50)
+
+# QUESTÃO 2.a) tcd ----
+fit <- survfit(surv~tcd, dados)
+print(fit)
+ggsurv(fit, xlim=c(0,400), break.time.by = 50)
 ```
 
-Não parece haver indícios de diferença entre as curvas de sobrevivência para as classificações de leucemia linfoblástica aguda (ALL) e leucemia mielóide aguda (AML). Entretanto, a curva para os pacientes com leucemia mielóide crônica (CML) apresentam uma aparente maior probabilidade de sobrevivência ao longo do tempo. Inclusive nem foi possível estimar o tempo mediano de sobrevivência para esse grupo. Já as estimativas do tempo mediano de sobrevivência, isto é, o tempo no qual metade dos pacientes já recuperaram as plaquetas, são bem próximas para os pacientes com leucemia linfoblástica aguda (ALL) e leucemia mielóide aguda (AML), 48 e 59 respecitamente. O resumo acima também mostra as estimativas intervalares com 955 de confiança.
+Vemos no primeiro gráfico que a estivativa da curva de sobrevivência decai rapídamente nos primeiros 300 dias para pouco menos de 50%. De fato, observando os dados, vimos que o maior tempo observado de recuperação das plaquetas ocorre no dia 385, com isso estimaviva da curva de sobrevivência não decai mais a partir desse dia. Para observar melhor o que acontece no início da curva, fizemos gráfico, porém, limitando o eixo do tempo até o dia 400. Com isso, podemos ver claramente, seguindo a linha pontilhada, que o tempo de sobrevivência mediano é de 75 dias. Isto é, 75 dias é a estimativa do tempo decorrido após o transplante em que a probabilidade de recuperação das plaquetas é 50%. E uma intervalar de 95% de confiança para o tempo mediano até a recuperação das plaquetas é $[56, 112]$ dias. Além disso, convém notar que o número total de observações é igual a 2204 e o número de recuperações observadas é 1169.
 
+Para a covariável idade, `age`, trata-se da segunda saída do R e gráfico. Construimos o gráfico com as estimativas de Kaplan-Meier para a curva de sobrevivência para cada categoria ("<=20", "20-40" e ">40"). Novamente, para melhor visualizar as curvas, iremos mostrar até o dia 400, uma vez que as estimaivas das curvas são constantes depois disso. O gráfico mostra que os pacientes na faixa etária menor ou igual a 20 anos tem uma aparente menor estimativa da curva de sobrevivencia em relação às outras faixas etárias e em especial após o seu tempo mediano. Antes do tempo mediano, é dificil ver indícios de diferenças entre as curvas. Além disso, as estimativas intervalares (com confiança de 95%) para o tempo mediano se sobrepõem, indicando não haver diferença estatística entre os tempos medianos.
 
-
+Com relação à Classificaçao da doença, `dissub`, Não parece haver indícios de diferença entre as curvas de sobrevivência para as classificações de leucemia linfoblástica aguda (ALL) e leucemia mielóide aguda (AML). Entretanto, a curva para os pacientes com leucemia mielóide crônica (CML) apresenta uma aparente maior probabilidade de sobrevivência ao longo do tempo. Inclusive nem foi possível estimar o tempo mediano de sobrevivência para esse grupo. Já as estimativas do tempo mediano de sobrevivência, isto é, o tempo no qual metade dos pacientes já recuperaram as plaquetas, são bem próximas para os pacientes com leucemia linfoblástica aguda (ALL) e leucemia mielóide aguda (AML), 48 e 59 respecitamente. A terceira saída do R também mostra as estimativas intervalares com 95% de confiança.
 
 Já para a covariável de Correspondência de gênero, `drmatch`, não parece haver diferenças entre as curvas de sobrevivência estimadas por Kaplan-Meier. As estimativas pontuais do tempo de sobrevivência mediano também ficaram bem próximas, 86 e 64 dias para pacientes sem e com incompatibilidade de gênero, respectivamente. E com as estimativas intervalares se sobrepondo.
 
-
-```{r}
-# QUESTÃO 2.a) drmatch ----
-# ajuste
-fit <- survfit(s_plaq~drmatch, dados)
-
-# tabela com medidas resumo
-print(fit)
-
-# grafico das estimativas
-ggsurvplot(
-  fit,
-  surv.median.line = "hv",
-  ggtheme = theme_bw(),
-  xlim=c(0,400),
-  risk.table = T, tables.height = 0.32,
-  break.time.by = 50, 
-  legend='top'
-)
-
-```
-
-
 Por fim, quanto a Depleção de células T, `tcd`, observamos que existem indícios de diferença entre as curvas de sobrevivência estimadas. O pacietes com depleção de células T apresentam, ao longo do tempo, uma menor sobrevivência, iso é, um menor tempo de recuperação das plaquetas. Isso também é evidenciado pelo tempo mediano de sobrevivência: a estimativa do tempo até metade dos paciente sem depleção de células T recuperarem as plaquetas é de 112 dias, enquanto que nos pacientes com depleção, essa estimativa é de 36 dias.
 
-```{r}
-# QUESTÃO 2.a) tcd ----
-# ajuste
-fit <- survfit(s_plaq~tcd, dados)
-
-# tabela com medidas resumo
-print(fit)
-
-# grafico das estimativas
-ggsurvplot(
-  fit,
-  surv.median.line = "hv",
-  ggtheme = theme_bw(),
-  xlim=c(0,400),
-  risk.table = T, tables.height = 0.32,
-  break.time.by = 50, 
-  legend='top'
-)
-
-```
 
 
+<!-- A seguir, iremos análisar comparar o tempo de recuperação das plaquetas entre os níveis de cada fator `age`, `dissub`, `drmatch` e `tcd`. É interessante também análisar o tempo mediano de recuperação das plaquetas para cada nível dos fatores. A tabela a seguir mostra as estimativas pontual e intervalar dos tempos medianos geral e em cada nível de cada fator. -->
+
+<!-- ```{r} -->
+<!-- fits <- list( -->
+<!--   survfit(surv ~ 1, dados), -->
+<!--   survfit(surv ~ age, dados), -->
+<!--   survfit(surv ~ dissub, dados), -->
+<!--   survfit(surv ~ drmatch, dados), -->
+<!--   survfit(surv ~ tcd, dados) -->
+<!-- ) -->
+
+
+<!-- fits %>%  -->
+<!--   tbl_survfit( -->
+<!--   probs = 0.5, -->
+<!--   label_header = "**Tempo mediano**", -->
+<!--   missing ="-", -->
+<!--   label = list( -->
+<!--     1 ~ "Geral" -->
+<!--   ) -->
+<!-- ) %>% -->
+<!--   #bold_labels() %>%  -->
+<!--   italicize_levels() %>%  -->
+<!--   modify_header( -->
+<!--     update = list( -->
+<!--       label ~ "**Variável**" -->
+<!--     ) -->
+<!--   ) -->
+
+<!-- ``` -->
 
 
 
@@ -321,47 +237,262 @@ ggsurvplot(
 
 ## b) Testes de log-rank, tempo de recuperação das plaquetas como desfecho
 
-Fizemos os testes de log-rank comparando as categorias das covariáveis no estudo. No teste de log rank, a hipótese nula é que as funções de sobrevivência em cada nível de um fator são iguais em todos os tempos. A hipótese alternativa é de que pelo menos uma função é diferente para algum tempo dentro de um intervalo de zero a um tempo razoável estabelecido.
+Fizemos os testes de log-rank comparando as categorias das covariáveis no estudo. No teste de log-rank, a hipótese nula é que as funções de sobrevivência em cada nível de um fator são iguais em todos os tempos. A hipótese alternativa é de que pelo menos uma função é diferente para algum tempo dentro de um intervalo de zero a um tempo razoável estabelecido.
 
 ```{r}
-(sdiff <- survdiff(s_plaq ~ age, dados_raw))
+# QUESTÃO 2.b) ----
+(sdiff <- survdiff(surv ~ age, dados))
 c("valor p exato" = pchisq(sdiff$chisq, df = 2, lower.tail = F))
 ```
 
 
 ```{r}
-survdiff(s_plaq ~ dissub, dados_raw)
+survdiff(surv ~ dissub, dados)
 ```
 
 
 ```{r}
-survdiff(s_plaq ~ drmatch, dados_raw)
+survdiff(surv ~ drmatch, dados)
 ```
 
 
 ```{r}
-survdiff(s_plaq ~ tcd, dados_raw)
+survdiff(surv ~ tcd, dados)
 ```
 
-A um nível de significância de 5%, rejeitamos a hipótese de nula que as curvas de sobrevivência são iguais em todos os tempos, isto é, existe diferença entre os tempos até a recuperação das plaquetas entre os níveis das covariáveis Idade (valor p = 0.048), Classificação da doença (valor p = 1e-06) e Depleção de células T (valor p = 5e-08). Observamos que para a idade essa diferença é discutível e ainda mais se notarmos que as curvas para as diferentes faixas etárias aparentam se cruzarem. Além disso, não rejeitamos a hipótese nula para os níveis de Correspondência de gênero que apresentam valores observados bem próximos dos esperados.
+Para a comparação entre as diferentes faixas etárias da covariável Idade, rejeitamos a hipótese de nula, a um nível de significância de 5% (valor p = 0.048). Observamos o valor p ficou bem próximo do nível de significância e também pelo gráfico, vemos que essa diferença é discutível se notarmos que as curvas para as diferentes faixas etárias aparentam se cruzarem, diminuindo o poder do teste. Ademais, como podemos ver no grafico da curva de sobrevivência para as diferentes faixas etárias e também no resumo do teste log rank, podemos dizer que a curva de sobrevivência dos pacientes com até 20 anos é diferente das demais faixas, que não aparentam diferença.
+
+Quanto à classificação da doença, a um nível de significância de 5%, rejeitamos a hipótese de nula (valor p = 1e-06), isto é, podemos dizer que existe pelo menos alguma diferença entre os tempos até a recuperação das plaquetas entre os níveis da covariável. Em particular, vemos pelo gráfico das curvas de sobrevivência e pela saída do teste que os pacientes com CML, leucemia mielóide crônica, indicam ter um diferente tempo até a recuperação das plaquetas em relação aos outros dois grupos, que não apresentam aparente diferença.  
+
+Em vista da depleção ou não de células T, encontramos um valor p igual a 5e-08, rejeitando, dessa forma, a hipótese nula a um nível de significância de 5%. A diferença entre os grupos é bem clara no gráfico e entre os valores observados e esperados. Desse modo, podemos dizer que os pacientes com depleção de céculas T tiveram um menor tempo até a recuperação das plaquetas e a diferença é estatísticamente significativa a 5%.
+
+Por fim, não rejeitamos a hipótese nula quando comparamos os níveis de Correspondência de gênero, que, olhando a saída do teste, apresentam valores observados bem próximos dos esperados. Os testes confirmaram aquilo que pudemos ver nos graficos com as estimativas da curvas de sobreviência para cada nível das covariáveis.
+
+
+
+
+
+
+
+
 
 
 ## c) Análise descritiva, tempo livre da doença como desfecho
 
-De maneira similar ao item a), fazemos os gráficos com as estimativas de Kaplan-Meier e estimativas pontuais e intervalares do tempo de sobrevivencia mediano geral e para os diferentes níveis de cada covariável.
+
+De maneira similar ao item a), fazemos uma análise descritiva dos dados considerando como desfecho ou variável resposta o tempo livre da doença `rfstime`. Começamos fazendo o gráfico com a estimativa de Kaplan-Meier para a curva de sobrevivência do tempo livre da doença. Também mostramos as estimativas pontuais e intervalares do tempo mediano livre da doença, tanto no geral, quanto para os diferentes níveis de cada covariável.
+
+```{r}
+# QUESTÃO 2.c) geral ----
+surv <- with(dados,Surv(rfstime, rfsstat))
+
+fit <- survfit(surv~1, dados)
+print(fit)
+ggsurv(fit, legend = 'none')
+
+# QUESTÃO 2.c) age ----
+fit <- survfit(surv~age, dados)
+print(fit)
+ggsurv(fit)
+
+# QUESTÃO 2.c) dissub ----
+fit <- survfit(surv~dissub, dados)
+print(fit)
+ggsurv(fit)
+
+# QUESTÃO 2.c) drmatch ----
+fit <- survfit(surv~drmatch, dados)
+print(fit)
+ggsurv(fit)
+
+# QUESTÃO 2.c) tcd ----
+fit <- survfit(surv~tcd, dados)
+print(fit)
+ggsurv(fit)
+
+```
+
+
+Considerando as diferentes faixas etárias, nota-se que o grupo com idade maior ou igual a 40 anos apresenta uma menor probabilidade de sobrevivencia em comparação aos outros grupos. Nota-se ainda que as curvas para os grupos com até 20 anos e entre 20 e 40 são bem próximas e até se cruzam. Esse cruzamento pode diminuir o poder do teste log-rank pela maneira como é definida a estatística do teste.
+
+Observando agora o gráfico com as estimativas de Kaplan-Meier para as três classificações de doenças, nota-se que as curvas são bem próximas nos primeiros 1000 dias, mas com o passar do tempo aparecem diferenças, em especial entre os grupos com AML e CML. Entretando , nesse gráfico também, podemos notar que as curvas se sobrepõem e se cruzam.
+
+Para a correspondencia de gênero, não parece haver diferenças entre as estimativas das curvas de sobrevivência. E por fim, com relação à depleção de células T, nota-se que as curvas se diferenciam principalmente no centro. É interessante notar também que em vários grupos não foi possível encontrar o tempo mediano livre da doença.
+
+
+<!-- A seguir, apresentamos o tempo mediano livre da doença geral e dentro de cada nível de cada covariável `age`, `dissub`, `drmatch` e `tcd`. A tabela a seguir mostra, em resumo, as estimativas pontual e intervalar dos tempos medianos geral e em cada nível de cada fator. -->
+
+<!-- ```{r} -->
+<!-- fits <- list( -->
+<!--   survfit(surv ~ 1, dados), -->
+<!--   survfit(surv ~ age, dados), -->
+<!--   survfit(surv ~ dissub, dados), -->
+<!--   survfit(surv ~ drmatch, dados), -->
+<!--   survfit(surv ~ tcd, dados) -->
+<!-- ) -->
+
+
+<!-- fits %>%  -->
+<!--   tbl_survfit( -->
+<!--   probs = 0.5, -->
+<!--   label_header = "**Tempo mediano**", -->
+<!--   missing ="-", -->
+<!--   label = list( -->
+<!--     1 ~ "Geral" -->
+<!--   ) -->
+<!-- ) %>% -->
+<!--   #bold_labels() %>%  -->
+<!--   italicize_levels() %>%  -->
+<!--   modify_header( -->
+<!--     update = list( -->
+<!--       label ~ "**Variável**" -->
+<!--     ) -->
+<!--   ) -->
+
+<!-- ``` -->
+
+
 
 
 ## d) Testes de log-rank, tempo livre da doença como desfecho
 
-(d) Faça testes de log-rank comparando as categorias das covariáveis no estudo. Considere também a inclusão de ponderaçōes nesse caso. Discuta os resultados.
+Fizemos os testes de log-rank comparando as curvas de sobrevivência das categorias para cada covariável no estudo. Consideramos também diferentes ponderações, além do peso igual a 1 que é o caso do teste log-rank.
+
+```{r}
+# QUESTÃO 2.d) ----
+
+library(survminer)
+
+survfit(surv~age, dados) %>% 
+  {bind_rows(
+    surv_pvalue(., method = "log-rank"),
+    surv_pvalue(., method = "gehan-breslow"), 
+    surv_pvalue(., method = "S1")
+  )} %>% 
+  dplyr::select(variable, method, pval)
+
+```
+
+Comparando os grupos etários, obtemos p-valores significativos, a um nível de 5%, em todos os testes. Dessa forma, rejeitamos a hipótese nula, isto, concluimos que existe pelo menos uma diferença nas curvas de sobrevivência.
+
+
+```{r}
+survfit(surv ~ dissub, dados) %>% 
+  {bind_rows(
+    surv_pvalue(., method = "log-rank"),
+    surv_pvalue(., method = "gehan-breslow"),
+    surv_pvalue(., method = "S1")
+  )} %>% 
+  dplyr::select(variable, method, pval)
+```
+
+Agora, testando as curvas dos níveis da classificação da doença, obtemos valores p bem diferentes entre si. O teste de log-rank rejeita a hipótese nula a um nível de 5%. O teste de Gehan-Breslow é melhor para detectar diferenças no início das curvas, e como podemos ver no gráfico, no inicio não existe tanta diferença, isso explica o valor p de 0.5. Enquanto que no teste modificado Peto-Peto, obtemos um menor valor p, mas ainda não significativo a um nível de 5% e, com isso, não rejeitamos a hipótese nula.
+
+
+```{r}
+survfit(surv ~ drmatch, dados) %>% 
+  {bind_rows(
+    surv_pvalue(., method = "log-rank"),
+    surv_pvalue(., method = "gehan-breslow"),
+    surv_pvalue(., method = "S1"),
+  )} %>% 
+  dplyr::select(variable, method, pval)
+```
+Comparando a compatibildade de gênero, em todos os testes, rejeitamos não rejeitamos a hipótese nula. Ou seja, não parece haver diferença nas curvas de sobrevivência do tempo livre de doença.
+
+
+```{r}
+survfit(surv ~ tcd, dados) %>% 
+  {bind_rows(
+    surv_pvalue(., method = "log-rank"),
+    surv_pvalue(., method = "gehan-breslow"),
+    surv_pvalue(., method = "S1")
+  )} %>% 
+  dplyr::select(variable, method, pval)
+```
+Por fim, quanto à depleção de células T, obtemos um valor p bem significante no teste de log-rank, rejeitando a hipótese nula a um nível de 5%, assim como no teste de Peto-Peto modificado com um valor p de 0.0351. Mas encontrando um valor p não significativo no teste de Gehan-Breslow, a 5%. Ainda assim, pela pelo fato do teste de Peto-Peto modificado ser mais robusto e pela análise descritiva, concluímos que existe diferença nas curvas de sobrevivencia para o tempo livre de doença no que diz respeito à depleção de células T.
+
+
 
 ## e) Modelo Weibull, tempo livre da doença como desfecho
 
-(e) Considerando o tempo livre da doença, ajuste um modelo Weibull aos dados. 
-Apresente os resultados do modelo completo, com todas as covariáveis incluídas. 
-Faça um processo de seleça de variáveis utilizando o teste da razão de verossimilhanças e apresente o resultado do modelo final obtido. 
+Considerando o tempo livre da doença, ajustamos um modelo Weibull aos dados. 
+A seguir, apresentamos os resultados do modelo completo, com todas as covariáveis incluídas. 
+```{r}
+surv <- with(dados, Surv(rfstime, rfsstat))
+fitfull <- survreg(surv ~ dissub+age+drmatch+tcd, dados, dist = "weibull")
+
+summary(fitfull) 
+```
+
+<!-- Utilizando o teste da razão de verossimilhanças, começamos com o modelo com todas as covariáveis, o "modelo cheio". Em seguida, ajustamos um modelo sem um das covariáveis, calculamos a razão de verossimilhança entre esse modelo e o modelo cheio, calculamos o valor p do teste e retiramos a variável caso aquele não seja signifcativo a 5%. A partir daí, na próxima iteração, o novo modelo a ser considerado não é mais o modelo cheio, mas o que acabou de retirar a covariável. E continuamos até não retirarmos mais nenhuma covariável. -->
+
+Ajustamos o modelo com todas as covariáveis, o modelo "cheio". Em seguida, para cada covariável, ajustamos um modelo sem essa covariável, calculamos a razão de verossimilhança entre esse modelo e o modelo cheio e o valor p do teste. Por fim, retiramos as covariável cujo teste não foi signifcativo a 5%.
+
+```{r}
+# library(lmtest)
+# lmtest::lrtest(fit1,"dissub","age","drmatch","tcd")
+
+# comecamos com o modelo cheio
+fitfull <- survreg(surv ~ dissub+age+drmatch+tcd, dados, dist = "weibull")
+
+formula(fitfull)==terms(fitfull)
+
+fit1 <- update(fitfull, ~ . - age)
+
+fit <- update(fit1, reformulate(".-tcd"))
+
+testa_rv <- function(fit, fith0, nome=NULL) {
+  if(is.null(nome)){
+    # formula para string
+    nome = Reduce(paste, deparse(terms(fith0)))
+  }
+  
+  # razao de verossimilhancas
+  lrv = -2 * (fith0$loglik[2] - fit$loglik[2])
+  
+  valorp <- pchisq(lrv, df = 2, lower.tail = FALSE)
+  
+  tibble(nome, lrv, valorp)
+}
+
+testa_rv(fitfull, update(fit, reformulate(paste0(". -", "age"))))
+labels(terms(fitfull)) %>% 
+  purrr::map_dfr(function(var_name) testa_rv(fitfull, update(fitfull, reformulate(paste0(". -", var_name)))))
+# 
+# escolhe_modelo <- function(fit, var_name, sig=0.05) {
+#   # retorna o modelo sem a covariavel, se o modelo sem a covariavel for signifcante diferente do modelo com a covariavel
+#   
+#   # modelo sem a covariavel
+#   fit_h0 <- update(fit, reformulate(paste0(". -", var_name)))
+#   
+#   teste <- testa_rv(fit, fit_h0, paste("-", var_name))
+#   print(teste)
+#   
+#   if(teste$valorp[1] < sig){
+#     return(fit)
+#   }else{
+#     cat(paste("Removendo", var_name, "do modelo\n"))
+#     return(fit_h0)
+#   }
+# }
+# 
+# m <- fitfull
+# for( var_name in labels(terms(fitfull))){
+#   m <- escolhe_modelo(m, var_name)
+# }
+# m
+```
+
+
+
 Você precisa descrever claramente o processo de seleção das variáveis adotado, mas deve apresentar apenas as estimativas e resultados de dois modelos: modelo completo e modelo final. 
+
+
 Você pode apresentar os resultados do modelo na parametrização de locação-escala.
+
+
+
 
 ## f) Interpretação do modelo final em (e).
 
