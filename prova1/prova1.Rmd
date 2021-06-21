@@ -409,6 +409,7 @@ survfit(surv ~ tcd, dados) %>%
     surv_pvalue(., method = "S1")
   )} %>% 
   dplyr::select(variable, method, pval)
+
 ```
 Por fim, quanto à depleção de células T, obtemos um valor p bem significante no teste de log-rank, rejeitando a hipótese nula a um nível de 5%, assim como no teste de Peto-Peto modificado com um valor p de 0.0351. Mas encontrando um valor p não significativo no teste de Gehan-Breslow, a 5%. Ainda assim, pela pelo fato do teste de Peto-Peto modificado ser mais robusto e pela análise descritiva, concluímos que existe diferença nas curvas de sobrevivencia para o tempo livre de doença no que diz respeito à depleção de células T.
 
@@ -419,103 +420,203 @@ Por fim, quanto à depleção de células T, obtemos um valor p bem significante
 Considerando o tempo livre da doença, ajustamos um modelo Weibull aos dados. 
 A seguir, apresentamos os resultados do modelo completo, com todas as covariáveis incluídas. 
 ```{r}
+# QUESTÃO 2.e)
 surv <- with(dados, Surv(rfstime, rfsstat))
-fitfull <- survreg(surv ~ dissub+age+drmatch+tcd, dados, dist = "weibull")
+fitfull <- survreg(surv ~ dissub+age+drmatch+tcd, 
+                   dados %>% mutate(age=as.character(age)), dist = "weibull")
 
-summary(fitfull) 
+summary(fitfull)
+
 ```
 
-<!-- Utilizando o teste da razão de verossimilhanças, começamos com o modelo com todas as covariáveis, o "modelo cheio". Em seguida, ajustamos um modelo sem um das covariáveis, calculamos a razão de verossimilhança entre esse modelo e o modelo cheio, calculamos o valor p do teste e retiramos a variável caso aquele não seja signifcativo a 5%. A partir daí, na próxima iteração, o novo modelo a ser considerado não é mais o modelo cheio, mas o que acabou de retirar a covariável. E continuamos até não retirarmos mais nenhuma covariável. -->
+Ajustamos o modelo com todas as covariáveis, o modelo "cheio". Em seguida, para cada covariável, ajustamos um modelo sem essa covariável, calculamos a razão de verossimilhança entre esse modelo e o modelo cheio e o valor p do teste. 
 
-Ajustamos o modelo com todas as covariáveis, o modelo "cheio". Em seguida, para cada covariável, ajustamos um modelo sem essa covariável, calculamos a razão de verossimilhança entre esse modelo e o modelo cheio e o valor p do teste. Por fim, retiramos as covariável cujo teste não foi signifcativo a 5%.
+Supondo que o espaço parâmetrico do modelo cheio é $\Theta$ e o espaço parâmetrico do modelo sem uma covariável é $\Theta_{0} \in \Theta$, o teste de razão de verossimilhanças testa
+$$
+\begin{array}{ll}
+H_{0}: & \theta \in \Theta_{0} \\
+H_{1}: & \theta \notin \Theta_{0}
+\end{array}
+$$
+
+A estatística do teste de razão de verossimilhanças pode ser escrita como
+
+$$
+\lambda_{\mathrm{RV}}=-2\left[\ell\left(\theta_{0}\right)-\ell(\hat{\theta})\right] \rightarrow \chi^2(p)
+$$
+onde $\ell\left(\theta_{0}\right)$ é a máxima log-verossimilhança do modelo sem a covariável, $\ell(\hat{\theta})$ é a máxima log-verossimilhança do modelo cheio e $p$ é a diferença de dimensionalidade entre os espaços paramétricos.
+
+Por fim, retiramos as covariável cujo teste não foi signifcativo a 5%.
 
 ```{r}
-# library(lmtest)
-# lmtest::lrtest(fit1,"dissub","age","drmatch","tcd")
+# teste de RV entre o modelo cheio e um modelo sem a covariavel para cada covariavel
+bind_rows(
+  anova(update(fitfull, ~ . - dissub), fitfull)[2,],
+  anova(update(fitfull, ~ . - age), fitfull)[2,],
+  anova(update(fitfull, ~ . - drmatch), fitfull)[2,],
+  anova(update(fitfull, ~ . - tcd), fitfull)[2,]) %>% 
+  dplyr::transmute(
+    Removendo = c("dissub", "age", "drmatch", "tcd"),
+    RV = Deviance,
+    `Valor-p` = `Pr(>Chi)`
+  ) %>% 
+  arrange(`Valor-p`) %>% 
+  kable(caption=paste0("Teste de RV entre o modelo cheio e um modelo ",
+                       "removendo cada covariavel separadamente."))
 
-# comecamos com o modelo cheio
-fitfull <- survreg(surv ~ dissub+age+drmatch+tcd, dados, dist = "weibull")
-
-formula(fitfull)==terms(fitfull)
-
-fit1 <- update(fitfull, ~ . - age)
-
-fit <- update(fit1, reformulate(".-tcd"))
-
-testa_rv <- function(fit, fith0, nome=NULL) {
-  if(is.null(nome)){
-    # formula para string
-    nome = Reduce(paste, deparse(terms(fith0)))
-  }
-  
-  # razao de verossimilhancas
-  lrv = -2 * (fith0$loglik[2] - fit$loglik[2])
-  
-  valorp <- pchisq(lrv, df = 2, lower.tail = FALSE)
-  
-  tibble(nome, lrv, valorp)
-}
-
-testa_rv(fitfull, update(fit, reformulate(paste0(". -", "age"))))
-labels(terms(fitfull)) %>% 
-  purrr::map_dfr(function(var_name) testa_rv(fitfull, update(fitfull, reformulate(paste0(". -", var_name)))))
-# 
-# escolhe_modelo <- function(fit, var_name, sig=0.05) {
-#   # retorna o modelo sem a covariavel, se o modelo sem a covariavel for signifcante diferente do modelo com a covariavel
-#   
-#   # modelo sem a covariavel
-#   fit_h0 <- update(fit, reformulate(paste0(". -", var_name)))
-#   
-#   teste <- testa_rv(fit, fit_h0, paste("-", var_name))
-#   print(teste)
-#   
-#   if(teste$valorp[1] < sig){
-#     return(fit)
-#   }else{
-#     cat(paste("Removendo", var_name, "do modelo\n"))
-#     return(fit_h0)
-#   }
-# }
-# 
-# m <- fitfull
-# for( var_name in labels(terms(fitfull))){
-#   m <- escolhe_modelo(m, var_name)
-# }
-# m
 ```
 
+Com isso, as variáveis que ficaram no modelo final foram `age` e `tcd`.
 
+```{r}
+fit_final <- update(fitfull, ~ age + tcd)
+summary(fit_final)
 
-Você precisa descrever claramente o processo de seleção das variáveis adotado, mas deve apresentar apenas as estimativas e resultados de dois modelos: modelo completo e modelo final. 
-
-
-Você pode apresentar os resultados do modelo na parametrização de locação-escala.
+```
 
 
 
 
 ## f) Interpretação do modelo final em (e).
 
-(f) Interprete os parâmetros do modelo final obtido em (e).
+Se $T \sim \operatorname{Weibull}(\lambda, \rho)$, a função de taxa de falha é dada por
+
+$$
+\alpha(t) = \lambda\rho t^{\rho-1}
+$$
+
+Devido à parametrização implementada em `survreg`, na saída do `R`, obtemos as estimativas $\hat{\gamma}$ e $\hat{\sigma}$. Estamos interessados em $\hat{\beta} = -\hat{\gamma}/\hat{\sigma}$ e $\hat{\rho} = 1/\hat{\sigma}$. Da saida do modelo, obtemos que $\hat{\rho} = 1/\hat{\sigma} \approx `r round(1/fit_final$scale, 3)`$ e calculando $\hat{\beta}$ obtemos
+
+```{r}
+# QUESTÃO 2.f)
+beta_hat = - fit_final$coefficients / fit_final$scale
+beta_hat
+```
+
+Dado um vetor de observações de covariáveis $x_i^\prime=(x_{i1},x_{i2},...,x_{ip} )^\prime$, temos que $\hat{\lambda_i} = \exp \{x_i^{\prime}\hat{\beta}\}$ é a estimativa para $\lambda_i$ e a estimativa da função de taxa de falha é
+
+$$
+\hat{\alpha}(t \mid x_i) = \hat{\lambda}\hat{\rho} t^{\hat{\rho}-1} = \exp \{x_i^{\prime}\hat{\beta}\} \hat{\rho} t^{\hat{\rho}-1}
+$$
+
+Sejam $x_j$ e $x_i$, tal que $x_{.k}$ seja uma covariável binária com $x_{jk}=1,x_{ik}=0$ para um certo $k$ e $x_{jl}=x_{il}$ para $l \neq k$. Para interpretar as estimativas do modelo, consiredemos a razão de riscos, ou razão de taxas de falha, entre $x_j$ e $x_i$,
+
+$$
+\frac{\hat{\alpha}(t \mid x_j)}{\hat{\alpha}(t \mid x_i)} 
+= \frac{
+    \exp \{x_j^{\prime}\hat{\beta}\} \hat{\rho} t^{\hat{\rho}-1}}{
+    \exp \{x_i^{\prime}\hat{\beta}\} \hat{\rho} t^{\hat{\rho}-1}}
+= \exp \{(x_j - x_i)^{\prime}\hat{\beta}\}
+= \exp \{\hat{\beta_k}\}
+$$
+Isso nos mostra que, se $\hat{\beta_k}>0$ ($<0$), o risco do evento aumenta (diminui) em $\exp\{\hat{\beta}\}$ vezes quando a covariável $k$ ocorre ($x_{.k}=1$) em relação a quando não ocorre ($x_{.k}=0$), mantendo constantes as outras covariáveis.  
+
+Com isso, calculamos $\exp\{\hat{\beta}\}$,
+```{r}
+exp(beta_hat)
+```
+
+Isso significa que (lembrando que o `R` adota o estilo de casela de refência):
+
+* Um paciente com mais de 40 anos tem um risco de óbito ou reincidência da doença 75% maior que um paciente com até 20 anos, mantendo-se as outras covariáveis constantes, no caso. `tcd`.
+* Um paciente com idade entre 20 e 40 anos tem um risco de óbito ou reincidência da doença 20% maior que um paciente com até 20 anos, mantendo-se as outras covariáveis constantes, no caso. `tcd`.
+* De forma análoga, um paciente com depleção de células T tem um risco de óbito ou reincidência da doença 21% maior que um paciente sem depleção de células T, mantendo-se as outras covariáveis constantes, no caso, a idade, `age`.
+
+
 
 ## g) Modelo log-logístico, tempo livre da doença como desfecho
 
-(g) De forma semelhante ao item (e), ajuste um modelo log-logístico aos dados. Faça da mesma forma (porém utilizando a distribuição log-logística) e apresente os resultados do modelo completo e do modelo final.
 
-
-## h) Interpretação do modelo final em (f).
-
-(h) Interprete os parâmetros do modelo final obtido em (g).
-
-
-
-Importante: Em todos os itens, os resultados apresentados devem ser interpretados. A redação será também avaliada. Não se esqueça de apresentar códigos dos programas utilizados.
-
-
+Considerando o tempo livre da doença, ajustamos um modelo log-logístico aos dados. 
+A seguir, apresentamos os resultados do modelo completo, com todas as covariáveis incluídas. 
 ```{r}
+# QUESTÃO 2.g)
+surv <- with(dados, Surv(rfstime, rfsstat))
+fitfull <- survreg(surv ~ dissub+age+drmatch+tcd, 
+                   dados %>% mutate(age=as.character(age)), dist = "loglogistic")
+
+summary(fitfull)
 
 ```
 
+A seguir a tabela com os valores p dos teste de razão de verossimilhança.
+
+```{r}
+# teste de RV entre o modelo cheio e um modelo sem a covariavel para cada covariavel
+bind_rows(
+  anova(update(fitfull, ~ . - dissub), fitfull)[2,],
+  anova(update(fitfull, ~ . - age), fitfull)[2,],
+  anova(update(fitfull, ~ . - drmatch), fitfull)[2,],
+  anova(update(fitfull, ~ . - tcd), fitfull)[2,]) %>% 
+  dplyr::transmute(
+    Removendo = c("dissub", "age", "drmatch", "tcd"),
+    RV = Deviance,
+    `Valor-p` = `Pr(>Chi)`
+  ) %>% 
+  arrange(`Valor-p`) %>% 
+  kable(caption="Teste de RV entre o modelo cheio e um modelo removendo cada covariavel separadamente.")
+
+```
+
+Com isso, a única variável que ficou no modelo final foi `age`.
+
+```{r}
+fit_final <- update(fitfull, ~ age)
+summary(fit_final)
+
+```
+
+
+
+
+## h) Interpretação do modelo final em (g).
+
+Se $T \sim \operatorname{log-logística}(\lambda, \rho)$, a função de taxa de falha é dada por
+
+$$
+\alpha(t) = \frac{\lambda\rho t^{\rho-1}}{1+ \rho t^{\rho}}
+$$
+
+
+Com a parametrização implementada em `survreg`, na saída do `R`, obtemos as estimativas $\hat{\gamma}$ e $\hat{\sigma}$. No caso do modelo log-logístico, também $\hat{\beta} = -\hat{\gamma}/\hat{\sigma}$ e $\hat{\rho} = 1/\hat{\sigma}$. Da saida do modelo, obtemos que $\hat{\rho} = 1/\hat{\sigma} \approx `r round(1/fit_final$scale, 3)`$ e calculando $\hat{\beta}$ obtemos
+
+```{r}
+# QUESTÃO 2.h)
+beta_hat = - fit_final$coefficients / fit_final$scale
+beta_hat
+
+```
+
+Dado um vetor de observações de covariáveis $x_i^\prime=(x_{i1},x_{i2},...,x_{ip} )^\prime$, temos que $\hat{\lambda_i} = \exp \{x_i^{\prime}\hat{\beta}\}$ é a estimativa para $\lambda_i$ e a estimativa da função de taxa de falha é
+
+$$
+\hat{\alpha}(t \mid x_i) = \frac{\hat{\lambda}\hat{\rho} t^{\hat{\rho}-1}}{1+ \hat{\rho} t^{\hat{\rho}}}
+= \frac{\exp \{x_i^{\prime}\hat{\beta}\} \hat{\rho} t^{\hat{\rho}-1}}{1+ \hat{\rho} t^{\hat{\rho}}}
+$$
+
+Sejam $x_j$ e $x_i$, tal que $x_{.k}$ seja uma covariável binária com $x_{jk}=1,x_{ik}=0$ para um certo $k$ e $x_{jl}=x_{il}$ para $l \neq k$. Para interpretar as estimativas do modelo, consiredemos a razão de riscos, ou razão de taxas de falha, entre $x_j$ e $x_i$,
+
+$$
+\frac{\hat{\alpha}(t \mid x_j)}{\hat{\alpha}(t \mid x_i)} 
+= \frac{
+    \frac{\exp \{x_j^{\prime}\hat{\beta}\} \hat{\rho} t^{\hat{\rho}-1}}{1+ \hat{\rho} t^{\hat{\rho}}}}{
+    \frac{\exp \{x_i^{\prime}\hat{\beta}\} \hat{\rho} t^{\hat{\rho}-1}}{1+ \hat{\rho} t^{\hat{\rho}}}}
+= \exp \{(x_j - x_i)^{\prime}\hat{\beta}\}
+= \exp \{\hat{\beta_k}\}
+$$
+Isso nos mostra que, se $\hat{\beta_k}>0$ ($<0$), o risco do evento aumenta (diminui) em $\exp\{\hat{\beta}\}$ vezes quando a covariável $k$ ocorre ($x_{.k}=1$) em relação a quando não ocorre ($x_{.k}=0$), mantendo constantes as outras covariáveis.  
+
+
+Com isso, calculamos $\exp\{\hat{\beta}\}$,
+```{r}
+exp(beta_hat)
+```
+
+
+De forma análoga ao item e), iterpretamos que:
+
+* Um paciente com mais de 40 anos tem um risco de óbito ou reincidência da doença 2 vezes maior que um paciente com até 20 anos.
+* Um paciente com idade entre 20 e 40 anos tem um risco de óbito ou reincidência da doença 30% maior que um paciente com até 20 anos.
 
 
 
