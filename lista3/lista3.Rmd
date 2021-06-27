@@ -79,7 +79,47 @@ library(dplyr)
 library(survival)
 library(survminer)
 df = read.table('data/Lista3_whas500.dat')
-colnames(df) = c('id','age','gender', 'hr', 'sysbp', 'diasbp', 'bmi','cvd', 'afb','sho','chf','av3','miord', 'mitype', 'year', 'admitdate', 'disdate', 'fdate', 'los', 'dstat', 'lenfol', 'fstat')
+colnames(df) = c('id','age','gender', 'hr', 'sysbp', 'diasbp', 'bmi','cvd',
+                 'afb','sho','chf','av3','miord', 'mitype', 'year', 
+                 'admitdate', 'disdate', 
+                 'fdate', 'los', 'dstat', 'lenfol', 'fstat')
+df =  df[,c('lenfol', 'fstat', 'age', 'hr', 'diasbp', 'chf')]
+```
+
+Primeiro vamos dividir a variável Idade segundo as faixas propostas pelo enunciado, e as outras variáveis contínuas vamos dividir entre:
+
+* Menor que o primeiro quartil
+* Entre o primeiro e o terceiro quartis
+* Maior que o terceiro quartil
+
+```{r, include=FALSE}
+
+# criando faixas de idade
+df$faixa_idade <- as.factor(sapply(df$age,
+  function(x){
+  if (x < 60) x = '60<'
+  else if (x >= 60 & x < 75) x = '>=60 & 75<'
+  else if (x >= 75 ) x = '>=75'
+  }))
+
+quantile(df$diasbp, probs = 0.25)
+
+df$faixa_hr <- as.factor(sapply(df$hr,
+  function(x){
+  if (x < quantile(df$hr, probs = 0.25)) x = '[0,Q1['
+  else if (x >= quantile(df$hr, probs = 0.25) & 
+           x < quantile(df$hr, probs = 0.75)) x = '[Q1, Q3['
+  else if (x>=quantile(df$hr, probs = 0.75)) x = "[Q3, inf["
+  }))
+
+
+df$faixa_diasbp <- as.factor(sapply(df$diasbp,
+  function(x){
+  if (x < quantile(df$diasbp, probs = 0.25)) x = '[0,Q1['
+  else if (x >= quantile(df$diasbp, probs = 0.25) & 
+           x < quantile(df$diasbp, probs = 0.75)) x = '[Q1, Q3['
+  else if (x>=quantile(df$diasbp, probs = 0.75)) x = "[Q3, inf["
+  }))
 ```
 
 # Questão 5
