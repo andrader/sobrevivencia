@@ -1,0 +1,181 @@
+---
+title: "Construção do Estimador de Kaplan-Meier"
+output: beamer_presentation
+header-includes:
+   - \usepackage{booktabs}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Construção do estimador de Kaplan-Meier
+
+- $T$: tempo até ocorrência de um evento, origem bem definida \pause
+- Censura à direita \pause
+- Amostra: $Y_i = \min(T_i, C_i)$ e $\delta_i = \mathbf{I}(T_i < C_i)$, $i=1,...,n$ \pause
+- com $r \leq n$ tempos distintos, $t_1 < t_2 < \dots < t_r$ \pause
+- com $d_i$ falhas no tempo $t_i$ \pause
+- e $n_i$ indivíduos em risco no tempo $t_i^-$ \pause
+- Encontrar um estimador para $S(t)=P(T>t)$
+
+# Paralelo com Tábua de Vida
+
+- Particionar o tempo em $\xi_0,\xi_1,...,\xi_p$
+
+$$
+\begin{aligned}
+S(\xi_2) \pause 
+&= P(T>\xi_2) \pause \\
+&= P(T>\xi_2 \mid T> \xi_1)P(T>\xi_1) \pause \\
+&= P(T>\xi_2 \mid T> \xi_1)P(T>\xi_1 \mid T>\xi_0) \cdot 1 \pause \\
+\end{aligned}
+$$
+
+- Seja $p_i = P(T>\xi_i \mid T> \xi_{i-1}),\ i=1,...,r$ e $t_0=0$ \pause
+
+
+- Podemos escrever
+
+$$
+S(\xi_i) = p_ip_{i-1}p_{i-2} \dots p_1= \prod_{k=1}^ip_k
+$$
+
+# Paralelo com Tábua de Vida
+
+- Seja $q_i = 1 - p_i = P(T<\xi_i \mid T> \xi_{i-1})$ \pause
+
+- Estimativa para $q_i$ 
+
+$$
+\begin{aligned}
+\hat{q_i} &= \hat{P}(T \leq \xi_i \mid T> \xi_{i-1}) \pause \\ 
+&= \frac{\text{eventos em } (\xi_{i-1},\xi_i]}{\text{indivíduos vivos até }\xi_{i-1}}\pause \\ 
+&= \frac{d_i}{n_i-w_i/2} \pause
+\end{aligned}
+$$
+- Estimativa para $p_i$ 
+
+$$\Rightarrow \hat{p_i} = 1- \frac{d_i}{n_i-w_i/2}$$
+$$
+\hat{S}(\xi_i) = \prod_{j: t_j \leq \xi_i}\hat{p}_j=\prod_{j: t_j \leq \xi_i}\left[1- \frac{d_j}{n_j-w_j/2}\right],\ \hat{S}(\xi_0)=1
+$$
+
+
+
+# Estimador de Kaplan-Meier
+
+Estimador de Kaplan-Meier
+
+$$
+\hat{S}(t)=\begin{cases}
+1 & \text{ se } t<t_{1} \\
+\prod_{t_i \leq t}\left[1- \frac{d_i}{n_i}\right] & \text{ se } t \geq t_{1} \\
+\end{cases}
+$$
+
+# Exemplo
+
+
+Estudo com pacientes com câncer de mama (Liu, 2012), que foram acompanhadas por um período de 7 anos, até o óbito ou fim do estudo:
+
+$$
+5,17,20+, 24,32,35+, 40,46,47,50,59,74+
+$$
+
+
+# Exemplo
+
+
+\begin{tabular}{rrrrrrrr}
+\toprule{}
+$j$ & $t_j$ & $d_j$ & $w_j$ & $n_j$ & $\hat{q_j}$ & $\hat{p_j}$ & $\hat{S}(t_j)$ \\
+\midrule{}
+0 &  0 & 0 & 0 & 12 & 0/12 & 12/12 & 1.00 \pause \\
+1 &  5 & 1 & 0 & 12 & 1/12 & 11/12 & 0.92 \pause \\
+2 & 17 & 1 & 0 & 11 & 1/11 & 10/11 & 0.83 \pause \\
+3 & 24 & 1 & 1 &  9 & 1/9  &  8/9  & 0.74 \pause \\
+4 & 32 & 1 & 0 &  8 & 1/8  &  7/8  & 0.65 \pause \\
+5 & 40 & 1 & 1 &  6 & 1/6  &  5/6  & 0.54 \pause \\
+6 & 46 & 1 & 0 &  5 & 1/5  &  4/5  & 0.43 \pause \\
+7 & 47 & 1 & 0 &  4 & 1/4  &  3/4  & 0.32 \pause \\
+8 & 50 & 1 & 0 &  3 & 1/3  &  2/3  & 0.22 \pause \\
+9 & 59 & 1 & 0 &  2 & 1/2  &  1/2  & 0.11 \\
+\bottomrule{}
+\end{tabular}
+
+
+
+```{r, include=FALSE}
+library(dplyr)
+library(tibble)
+
+estimar_km <- function(dados, tempo, delta) {
+  dados %>%
+    # agrupa para cada tempo unico
+    group_by(t={{ tempo }}) %>%
+    # numero de eventos e censuras em cada t
+    summarise(d = sum({{ delta }}), w=sum(1-{{ delta }})) %>% 
+    ungroup() %>% 
+    mutate(
+      # numero de individuos vivos até antes de cada instante t
+      Y = sum(d+w) - (cumsum(d+w) - (d+w)),
+      # estimate of the conditional probability that an individual who survives 
+      # to just prior to time ti experiences the event at time ti
+      q = d/Y,
+      # estimate of surv function
+      s_hat = cumprod(1 - q)
+    ) %>% 
+    filter(d!=0)
+}
+
+# dados = tibble(
+#   tempo=c(5,17,20, 24,32,35, 40,46,47,50,59,74),
+#   delta = c(1,1,0,1,1,0,1,1,1,1,1,0))
+
+# dados %>% estimar_km(tempo, delta) %>% select(s_hat) %>% kable(format = 'latex',booktabs=TRUE) %>% cat()
+```
+
+
+
+
+
+# Variância
+
+Formula de Greenwood
+
+$$
+\widehat{\operatorname{Var}}[\hat{S}(t)]=\hat{S}(t)^{2} \sum_{t_{i} \leq t} \frac{d_{i}}{n_{i}\left(n_{i}-d_{i}\right)}
+$$
+
+# Intervalo de confiança
+
+
+$$
+\frac{\hat{S}(t) - S(t)}{\sqrt{\widehat{\operatorname{Var}}[\hat{S}(t)]}} \rightarrow \operatorname{N}(0,1)
+$$
+$$
+IC(S(t); \gamma) = \left[\hat{S}(t) - z_{\gamma/2}\sqrt{\widehat{\operatorname{Var}}[\hat{S}(t)]} ;\quad
+\hat{S}(t) + z_{\gamma/2}\sqrt{\widehat{Var}[\hat{S}(t)]}
+\right]
+$$
+\pause
+
+
+# Intervalo de confiança
+
+- Transformações
+  + Kalbfleisch-Prentice
+
+$$
+\begin{aligned}
+\hat{U} &(t)=\log (-\log \hat{S}(t)) \\
+\widehat{\operatorname{Var}}(\hat{U}(t))=& \frac{1}{(\log \hat{S}(t))^{2}} \sum_{j: t_{(j)} < t} q_{i} /\left(n_{j}\left(1 - q_{i}\right)\right)
+\end{aligned}
+$$
+
+
+$$
+IC(S(t); \gamma) = \left[(\hat{S}(t))^{-\theta}; (\hat{S}(t))^{\theta} \right]
+$$
+com $\theta = \exp \left\{z_{\gamma/2}\sqrt{\widehat{Var}[\hat{U}(t)]}\right\}$
