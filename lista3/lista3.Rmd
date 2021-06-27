@@ -89,7 +89,8 @@ df =  df[,c('lenfol', 'fstat', 'age', 'hr', 'diasbp', 'chf')]
 Primeiro vamos dividir a variável Idade segundo as faixas propostas pelo enunciado, e as outras variáveis contínuas vamos dividir entre:
 
 * Menor que o primeiro quartil
-* Entre o primeiro e o terceiro quartis
+* Entre o primeiro e o segundo quartis
+* Entre o segundo e o terceiro quartis
 * Maior que o terceiro quartil
 
 ```{r, include=FALSE}
@@ -108,7 +109,9 @@ df$faixa_hr <- as.factor(sapply(df$hr,
   function(x){
   if (x < quantile(df$hr, probs = 0.25)) x = '[0,Q1['
   else if (x >= quantile(df$hr, probs = 0.25) & 
-           x < quantile(df$hr, probs = 0.75)) x = '[Q1, Q3['
+           x < quantile(df$hr, probs = 0.50)) x = '[Q1, Q2['
+  else if (x >= quantile(df$hr, probs = 0.50) & 
+           x < quantile(df$hr, probs = 0.75)) x = '[Q2, Q3['
   else if (x>=quantile(df$hr, probs = 0.75)) x = "[Q3, inf["
   }))
 
@@ -117,7 +120,9 @@ df$faixa_diasbp <- as.factor(sapply(df$diasbp,
   function(x){
   if (x < quantile(df$diasbp, probs = 0.25)) x = '[0,Q1['
   else if (x >= quantile(df$diasbp, probs = 0.25) & 
-           x < quantile(df$diasbp, probs = 0.75)) x = '[Q1, Q3['
+           x < quantile(df$diasbp, probs = 0.50)) x = '[Q1, Q2['
+  else if (x >= quantile(df$diasbp, probs = 0.50) & 
+           x < quantile(df$diasbp, probs = 0.75)) x = '[Q2, Q3['
   else if (x>=quantile(df$diasbp, probs = 0.75)) x = "[Q3, inf["
   }))
 ```
