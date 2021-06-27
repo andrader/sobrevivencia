@@ -469,6 +469,14 @@ legend("topright", c("Kaplan-Meier", "IC Pontual", "Hall-Wellner"),
 
 Notemos então que a banda de confiança de Hall-Wellner é sempre maior que o intervalo pontual.
 
+```{r}
+library(survival)
+library(survminer)
+q6 = read.table('data/Lista2_cancerLingua.txt')
+colnames(q6) = c('perfil','tempo','delta')
+q6_df = q6 %>% filter(perfil == 1)
+```
+
 # Questão 7
 
 ```{r}

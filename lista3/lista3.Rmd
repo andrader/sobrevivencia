@@ -1,0 +1,81 @@
+---
+title: "MAE0514 - Introducão a Análise de Sobrevivência - Lista 3"
+author: |
+  | Bruno de Castro Paul Schultze\thanks{Número USP: 10736862}
+  | Rubens Santos Andrade Filho\thanks{Número USP: 10370336}
+date: "`r stringr::str_to_sentence(format(Sys.time(), '%B de %Y'))`"
+lang: pt-BR
+header-includes:
+  # - \usepackage[brazilian]{babel} # ja usando lang: pt-BR
+  - \usepackage{float}
+  - \usepackage{amsmath}
+  - \usepackage{amsthm}
+  - \floatplacement{figure}{H}
+  - \usepackage{indentfirst}
+  - \setlength{\parindent}{4em}
+  - \setlength{\parskip}{1em}
+  - \usepackage{booktabs}
+  - \usepackage{dcolumn}
+  - \usepackage{bm}
+  - \usepackage{titling}
+  - \thanksmarkseries{arabic} % \thanks footnotes com numeros
+  - \usepackage[bottom]{footmisc} % corrige posição footnotes
+  - \usepackage{grffile}
+  - \usepackage{pdfpages}
+  - \usepackage{tocloft}
+  - \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+  - \usepackage{amssymb}
+  - \renewcommand\qedsymbol{$\blacksquare$}
+  - \usepackage{pdfpages}
+  - \usepackage{cleveref}
+  - \usepackage{threeparttable}
+output:
+  pdf_document: 
+    fig_caption: yes
+    number_sections: no
+    toc: true
+    toc_depth: 3
+---
+
+\pagebreak
+
+\newcommand\invisiblesection[1]{%
+  \refstepcounter{section}%
+  \addcontentsline{toc}{section}{#1}%
+  \sectionmark{#1}}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, 
+                      # fig.dim = c(5,5),
+                      # out.height = '40%',
+                      # fig.align = 'center',
+                      message=FALSE
+                      )
+
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+library(readr)
+library(dplyr)
+
+
+```
+
+\clearpage
+
+# Questão 1
+
+# Questão 2
+
+# Questão 3
+
+# Questão 4 
+
+# Questão 5
+
+# Questão 6
+
+# Código Completo
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
