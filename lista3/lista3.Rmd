@@ -71,6 +71,17 @@ library(dplyr)
 
 # Questão 4 
 
+## 4.a
+
+```{r, include = FALSE}
+# QUESTAO 4 ----
+# QUESTAO 4a ----
+library(survival)
+library(survminer)
+df = read.table('data/Lista3_whas500.dat')
+colnames(df) = c('id','age','gender', 'hr', 'sysbp', 'diasbp', 'bmi','cvd', 'afb','sho','chf','av3','miord', 'mitype', 'year', 'admitdate', 'disdate', 'fdate', 'los', 'dstat', 'lenfol', 'fstat')
+```
+
 # Questão 5
 
 # Questão 6
