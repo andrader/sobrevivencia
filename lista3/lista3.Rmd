@@ -63,14 +63,13 @@ library(dplyr)
 
 \clearpage
 
-# Questão 1
-
-# Questão 2
+\includepdf[pages=1,scale=.8,pagecommand={\section{Questão 1}\label{pdf:q1q3}},linktodoc=true]{q1q3.pdf}
+\includepdf[pages=2-4,scale=.8,pagecommand={},linktodoc=true]{q1q3.pdf}
 
 \includepdf[pages=1,scale=.8,pagecommand={\section{Questão 2}\label{pdf:q2}},linktodoc=true]{q2.pdf}
 \includepdf[pages=2-,scale=.8,pagecommand={},linktodoc=true]{q2.pdf}
 
-# Questão 3
+\includepdf[pages=5,scale=.8,pagecommand={\section{Questão 3}\label{q1q3.pdf}},linktodoc=true]{q1q3.pdf}
 
 # Questão 4 
 
@@ -263,34 +262,7 @@ Com isso nós confirmamos tudo o que foi observado na análise descritiva.
 
 # Questão 5
 
-Considerando os dados do exercício 4,
 
-(a) Refizemos o item (b) utilizando a distribuição log-logística. Especifique claramente qual foi o modelo utilizado e quais foram os parâmetros estimados.
-
-```{r}
-# QUESTAO 5 ----
-
-library(survival)
-library(survminer)
-df = read.table('data/Lista3_whas500.dat')
-
-# QUESTAO 5a ----
-
-
-
-```
-
-
-(b) Encontre uma estimativa pontual para ao fator de aceleração para as variáveis idade categorizada e complicações congestivas e interprete o resultado.
-(c) A chance de sobrevivência após $t$ é definida como
-$$
-\frac{S(t \mid x)}{1-S(t \mid x)}
-$$
-No modelo logístico, mostre que
-$$
-\frac{S(t \mid x)}{1-S(t \mid x)}=\exp \left[-\boldsymbol{\beta}^{T} \boldsymbol{x}\right] \frac{S(t \mid \boldsymbol{x}=\mathbf{0})}{1-S(t \mid \boldsymbol{x}=\mathbf{0})}
-$$
-(d) Obtenha uma estimativa da razão de chances de sobrevivência após $t$ de pacientes sem complicações congestivas e com complicações congestivas. Interprete.
 
 # Questão 6
 
