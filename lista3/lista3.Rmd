@@ -67,6 +67,9 @@ library(dplyr)
 
 # Questão 2
 
+\includepdf[pages=1,scale=.8,pagecommand={\section{Questão 2}\label{pdf:q2}},linktodoc=true]{q2.pdf}
+\includepdf[pages=2-,scale=.8,pagecommand={},linktodoc=true]{q2.pdf}
+
 # Questão 3
 
 # Questão 4 
@@ -84,6 +87,7 @@ colnames(df) = c('id','age','gender', 'hr', 'sysbp', 'diasbp', 'bmi','cvd',
                  'admitdate', 'disdate', 
                  'fdate', 'los', 'dstat', 'lenfol', 'fstat')
 df =  df[,c('lenfol', 'fstat', 'age', 'hr', 'diasbp', 'chf')]
+df$chf = as.factor(df$chf)
 ```
 
 Primeiro vamos dividir a variável Idade segundo as faixas propostas pelo enunciado, e as outras variáveis contínuas vamos dividir entre:
@@ -98,12 +102,12 @@ Primeiro vamos dividir a variável Idade segundo as faixas propostas pelo enunci
 # criando faixas de idade
 df$faixa_idade <- as.factor(sapply(df$age,
   function(x){
-  if (x < 60) x = '60<'
-  else if (x >= 60 & x < 75) x = '>=60 & 75<'
-  else if (x >= 75 ) x = '>=75'
+  if (x < 60) x = '[0,60['
+  else if (x >= 60 & x < 75) x = '[60,75['
+  else if (x >= 75 ) x = '[75,inf['
   }))
 
-quantile(df$diasbp, probs = 0.25)
+df$faixa_idade = relevel(df$faixa_idade, ref = '[0,60[')
 
 df$faixa_hr <- as.factor(sapply(df$hr,
   function(x){
@@ -126,6 +130,136 @@ df$faixa_diasbp <- as.factor(sapply(df$diasbp,
   else if (x>=quantile(df$diasbp, probs = 0.75)) x = "[Q3, inf["
   }))
 ```
+
+Feito isso, vamos agora observar as curvas de Kaplan-Meier para cada grupo de cada variável explicativa individualmente, com as estimativas dos intervalos de confiança ponto a ponto, criados usando a transformação "log-log" para que fiquem bem comportados.
+
+### Idade
+
+```{r}
+q4_km_age = survfit(Surv(lenfol, fstat)~faixa_idade, type = 'kaplan-meier', data = df, 
+                    conf.type = 'log-log') 
+
+ggsurvplot(q4_km_age,df, conf.int = T, risk.table = T, tables.height = 0.35)+
+  labs(x="Tempo (dias)", y=expression(hat(S)(t)))
+```
+
+Aqui vemos que, fixado um t menor que 2000 (pois depois disso o número de observações é muito baixo), idades mais elevadas levam a estimativas menores da função de sobrevivência.
+
+### Frequência cardíaca inicial
+
+```{r}
+q4_km_hr = survfit(Surv(lenfol, fstat)~faixa_hr, type = 'kaplan-meier', data = df, 
+                    conf.type = 'log-log') 
+
+ggsurvplot(q4_km_hr,df, conf.int = T, risk.table = T, tables.height = 0.35)+
+  labs(x="Tempo (dias)", y=expression(hat(S)(t)))
+```
+
+Notemos que frequência cardíaca inicial parece estar negativamente correlacionada com tempo de sobrevivência, já que faixas menores de frequência cardíaca tem maior S(t) estimado em praticamente todos os instantes de tempo, com excessão dos instantes finais onde existem pouquíssimas observações.
+
+### Pressão diastólica inicial
+
+```{r}
+q4_km_diasbp = survfit(Surv(lenfol, fstat)~faixa_diasbp, type = 'kaplan-meier', data = df, 
+                    conf.type = 'log-log') 
+
+ggsurvplot(q4_km_diasbp,df, conf.int = T, risk.table = T, tables.height = 0.35)+
+  labs(x="Tempo (dias)", y=expression(hat(S)(t)))
+```
+
+Notemos então que pressão distólica inicial parece estar positivamente correlacionada com tempo de sobrevivência, já que faixas de pressão menores tem, em todos os instantes até 2000 onde já existem poucas observações, estimativas de S(t) menores.
+
+### Complicações congestivas
+
+```{r}
+q4_km_chf = survfit(Surv(lenfol, fstat)~chf, type = 'kaplan-meier', data = df, 
+                    conf.type = 'log-log') 
+
+ggsurvplot(q4_km_chf,df, conf.int = T, risk.table = T, tables.height = 0.35)+
+  labs(x="Tempo (dias)", y=expression(hat(S)(t)))
+```
+
+Aqui fica evidente que não ter complicações congestivas está associado com ter uma maior probabilidade de sobrevivência em cada instante.
+
+## 4.b
+
+A ideia aqui é construir um modelo de regressão Weibull.
+
+```{r}
+
+# 4.b
+q4_w = survreg(Surv(lenfol, fstat) ~ faixa_idade + diasbp + hr + chf,
+data = df, dist = "weibull")
+summary(q4_w)
+```
+
+Notemos que ao nível de 5% todos os coeficientes foram significativos.
+
+Primeiro lembremos que o algoritmo não solta os parâmetros usuais, de forma que temos que fazer as seguintes transformações sendo $\hat{\sigma}$ o parâmetro de escala retornado e $\hat{\gamma_j}$ o j-ésimo coeficiente retornado, onde $\hat{\gamma_0}$  é o intercepto.
+$$\hat{\rho} = \frac{1}{\hat{\sigma}} = \frac{1}{1.89}$$
+$$\hat{\beta_0} = exp\{- \frac{\hat{\gamma_0}}{\hat{\sigma}}\}$$
+$$\hat{\beta_j} = - \frac{\hat{\gamma_j}}{\hat{\sigma}}$$
+Assim, temos que:
+
+* $\hat{\rho} \approx 0.519$
+* $\hat{\beta}_0 = exp\{- \frac{10.56895}{1.89}\} \approx 0.0037$
+* $\hat{\beta}_{idade \geq 60 < 75} = 0.7187$
+* $\hat{\beta}_{idade \geq 75} = 1.5799$
+* $\hat{\beta}_{diasbp} = - 0.0135$
+* $\hat{\beta}_{hf} = 0.0112$
+* $\hat{\beta}_{chf=1} = 0.8401$
+
+Além disso, utilizando o ponto de vista dos modelos de taxa de risco proporcionais, temos que, sendo $x_i$ e $x_j$ duas observações, então:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = exp\{(x_i^T - x_j^T)\hat{\beta}\}$$
+
+Onde os parâmetros que compõem o vetor $\hat{\beta}$ são os mesmos de antes. Com isso é possível facilitar a interpretação dos parâmetros.
+
+Por exemplo, sendo $x_i$ um indivíduo com idade acima de 75 anos e $x_j$ um indivíduo com idade menor que 60 anos, mantendo-se as outras covariáveis iguais, temos que:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = exp\{1.5799\} \approx 4.85$$
+
+## 4.c
+
+Mantendo-se todas as covariáveis iguais exceto $chf$, e sendo $x_i$ um indivíduo com complicações congestivas e $x_j$ um indivíduo sem, então:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = exp\{0.8401\} \approx 2.317$$
+
+Assim, a taxa de risco de um indivíduo com complicações congestiva é 1.317 vezes maior a de um indivíduo sem complicações congestivas.
+
+Sendo $x_i$ um indivíduo com idade acima de 75 anos e $x_j$ um indivíduo com idade menor que 60 anos, mantendo-se as outras covariáveis iguais, temos que:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = exp\{1.5799\} \approx 4.85$$
+
+Assim, o indivíduo com idade maior que 75 anos tem um risco 3.85 vezes maior do que um com idade menor que 60 anos.
+
+Além disso, sendo $x_i$ um indivíduo com idade entre 60 e 75 anos e $x_j$ um indivíduo com idade menor que 60 anos, mantendo-se as outras covariáveis iguais, temos que:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = exp\{0.7187\} \approx 2.07$$
+
+## 4.d
+
+Sendo $x_j$ um indivíduo com pressão  diastólica de $x$ mmHg e $x_i$ um indivíduo com pressão diastólica $(x + 1)$ mmHg, mantendo-se as outras covariáveis iguais temos que:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = \frac{exp\{-0.0135 (x + 1)\}}{exp\{-0.0135 (x)\}} = exp\{-0.0135\} \approx 0.987 $$
+
+Sendo $x_j$ um indivíduo com pressão  diastólica de $x$ mmHg e $x_i$ um indivíduo com pressão diastólica $(x + 10)$ mmHg, mantendo-se as outras covariáveis iguais temos que:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = \frac{exp\{-0.0135 (x + 10)\}}{exp\{-0.0135 (x)\}} = exp\{-0.135\} \approx 0.874 $$
+
+Sendo $x_j$ um indivíduo com frequência cardíaca de $x$ bpm e $x_i$ um indivíduo com frequência cardíaca $(x + 1)$ bpm, mantendo-se as outras covariáveis iguais temos que:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = \frac{exp\{0.0112 (x + 1)\}}{exp\{0.0112 (x)\}} = exp\{0.0112\} \approx 1.011 $$
+
+Sendo $x_j$ um indivíduo com frequência cardíaca de $x$ bpm e $x_i$ um indivíduo com frequência cardíaca $(x + 5)$ bpm, mantendo-se as outras covariáveis iguais temos que:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = \frac{exp\{0.0112 (x + 5)\}}{exp\{0.0112 (x)\}} = exp\{0.056\} \approx 1.058 $$
+
+Sendo $x_j$ um indivíduo com frequência cardíaca de $x$ bpm e $x_i$ um indivíduo com frequência cardíaca $(x + 10)$ bpm, mantendo-se as outras covariáveis iguais temos que:
+
+$$\frac{\hat{\alpha}(t |x_i)}{\hat{\alpha}(t |x_j)} = \frac{exp\{0.0112 (x + 10)\}}{exp\{0.0112 (x)\}} = exp\{0.112\} \approx 1.119 $$
+
+Com isso nós confirmamos tudo o que foi observado na análise descritiva.
 
 # Questão 5
 
