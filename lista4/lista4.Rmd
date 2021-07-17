@@ -75,6 +75,8 @@ A análise sugeriu que a vacina Comirnaty teve uma alta eficácia na prevenção
 
 # Questão 2
 
+## 2.a
+
 # Questão 3
 
 # Questão 4
@@ -141,3 +143,103 @@ Testamos a hipótese $\mathrm{H}_{0}: \boldsymbol{\beta}=\mathbf{0}$ utilizando 
 
 
 # Questão 5
+
+```{r, include = FALSE}
+# QUESTAO 5 ----
+# QUESTAO 5a ----
+library(survival)
+library(survminer)
+library(readxl)
+
+q5 = read_excel('data/Lista4_Hodgkins.xlsx')
+q5$sex = as.factor(q5$sex)
+q5$stage = as.factor(q5$stage)
+q5$hist = as.factor(q5$hist)
+q5
+```
+
+Primeiro, ajustando o modelo de Cox sem usar a idade:
+
+```{r}
+q5_cox_a = coxph(Surv(survivaltime, dead)~sex+stage+hist, data = q5)
+summary(q5_cox_a)
+```
+Em seguida os resíduos martingal:
+
+```{r}
+plot(q5$age, resid(q5_cox_a), xlab = 'Idade', 
+     ylab = 'Resíduo martingal', pch = 16, col = 'steelblue3')
+smooth = lowess(q5$age, resid(q5_cox_a), iter = 1)
+lines(smooth)
+```
+
+Observemos então que parece ser realmente uma tendência linear, indicando que transformações não são necessárias para essa variável no modelo.
+
+## 5.b
+
+```{r}
+# 5.b
+q5_cox_b = coxph(Surv(survivaltime, dead)~sex+stage+hist+age, data = q5)
+summary(q5_cox_b)
+```
+
+Notemos que pelos testes de Wald apenas _sex_ não se mostra significativa ao nível de 5%.
+
+## 5.c
+
+Aplicando o Teste de Razão de Verossimilhanças para avaliar a exclusão de cada variável individualmente temos, para Idade:
+
+```{r}
+# 5.c
+q5_cox_c_age = coxph(Surv(survivaltime, dead)~sex+stage+hist, data = q5)
+anova(q5_cox_b, q5_cox_c_age)
+```
+
+Para Sexo:
+
+```{r}
+q5_cox_c_sex = coxph(Surv(survivaltime, dead)~age+stage+hist, data = q5)
+anova(q5_cox_b, q5_cox_c_sex)
+```
+
+Para Estágio:
+
+```{r}
+q5_cox_c_stage = coxph(Surv(survivaltime, dead)~age+sex+hist, data = q5)
+anova(q5_cox_b, q5_cox_c_stage)
+```
+
+Para Histologia:
+
+```{r}
+q5_cox_c_hist = coxph(Surv(survivaltime, dead)~age+stage+sex, data = q5)
+anova(q5_cox_b, q5_cox_c_hist)
+```
+
+Notemos então que ao nível de 5% somente as variáveis Idade e Estágio serão utilizadas no modelo final.
+
+```{r}
+q5_cox = coxph(Surv(survivaltime, dead)~age+stage, data = q5)
+summary(q5_cox)
+```
+
+Notemos que ter Estágio igual a 1 leva a ter uma taxa de falha 164% maior do que pacientes com Estágio igual a 0. E a cada ano a mais na idade a taxa de falha é 3.6% maior comparada com o ano anterior.
+
+## 5.d
+
+```{r}
+# 5.d
+q5$cox_snell = - (resid(q5_cox) - q5$dead)
+q5_cox_snell = coxph(Surv(cox_snell, dead)~1, data = q5)
+q5_base = basehaz(q5_cox_snell, centered = FALSE)
+plot(q5_base$time, q5_base$hazard, xlab = 'Resíduo Cox-Snell' ,
+     ylab = 'Estimativa da Função de Risco Acumulada', xlim = c(0,2), ylim = c(0,2))
+abline(0,1)
+```
+
+Notemos então que, com excessão dos último ponto à direita, os pontos se mantém de forma considerável sobre a reta com intercepto 0 e inclinação 1 (x=y), mostrando que o ajuste parece estar razoável.
+
+# Código Completo
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
