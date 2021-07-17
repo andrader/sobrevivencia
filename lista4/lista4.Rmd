@@ -75,6 +75,8 @@ A análise sugeriu que a vacina Comirnaty teve uma alta eficácia na prevenção
 
 # Questão 2
 
+## 2.a
+
 # Questão 3
 
 # Questão 4
@@ -101,7 +103,7 @@ Primeiro, ajustando o modelo de Cox sem usar a idade:
 q5_cox_a = coxph(Surv(survivaltime, dead)~sex+stage+hist, data = q5)
 summary(q5_cox_a)
 ```
-Em seguida os resíduos Martingal:
+Em seguida os resíduos martingal:
 
 ```{r}
 plot(q5$age, resid(q5_cox_a), xlab = 'Idade', 
@@ -112,20 +114,22 @@ lines(smooth)
 
 Observemos então que parece ser realmente uma tendência linear, indicando que transformações não são necessárias para essa variável no modelo.
 
-# 5.b
+## 5.b
 
 ```{r}
+# 5.b
 q5_cox_b = coxph(Surv(survivaltime, dead)~sex+stage+hist+age, data = q5)
 summary(q5_cox_b)
 ```
 
 Notemos que pelos testes de Wald apenas _sex_ não se mostra significativa ao nível de 5%.
 
-# 5.c
+## 5.c
 
 Aplicando o Teste de Razão de Verossimilhanças para avaliar a exclusão de cada variável individualmente temos, para Idade:
 
 ```{r}
+# 5.c
 q5_cox_c_age = coxph(Surv(survivaltime, dead)~sex+stage+hist, data = q5)
 anova(q5_cox_b, q5_cox_c_age)
 ```
@@ -160,10 +164,10 @@ summary(q5_cox)
 
 Notemos que ter Estágio igual a 1 leva a ter uma taxa de falha 164% maior do que pacientes com Estágio igual a 0. E a cada ano a mais na idade a taxa de falha é 3.6% maior comparada com o ano anterior.
 
-# 5.d
+## 5.d
 
 ```{r}
-# 5.c
+# 5.d
 q5$cox_snell = - (resid(q5_cox) - q5$dead)
 q5_cox_snell = coxph(Surv(cox_snell, dead)~1, data = q5)
 q5_base = basehaz(q5_cox_snell, centered = FALSE)
