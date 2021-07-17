@@ -1,0 +1,82 @@
+---
+title: "MAE0514 - Introducão a Análise de Sobrevivência - Lista 4"
+author: |
+  | Bruno de Castro Paul Schultze\thanks{Número USP: 10736862}
+  | Rubens Santos Andrade Filho\thanks{Número USP: 10370336}
+date: "`r stringr::str_to_sentence(format(Sys.time(), '%B de %Y'))`"
+lang: pt-BR
+header-includes:
+  # - \usepackage[brazilian]{babel} # ja usando lang: pt-BR
+  - \usepackage{float}
+  - \usepackage{amsmath}
+  - \usepackage{amsthm}
+  - \floatplacement{figure}{H}
+  - \usepackage{indentfirst}
+  - \setlength{\parindent}{4em}
+  - \setlength{\parskip}{1em}
+  - \usepackage{booktabs}
+  - \usepackage{dcolumn}
+  - \usepackage{bm}
+  - \usepackage{titling}
+  - \thanksmarkseries{arabic} % \thanks footnotes com numeros
+  - \usepackage[bottom]{footmisc} % corrige posição footnotes
+  - \usepackage{grffile}
+  - \usepackage{pdfpages}
+  - \usepackage{tocloft}
+  - \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+  - \usepackage{amssymb}
+  - \renewcommand\qedsymbol{$\blacksquare$}
+  - \usepackage{pdfpages}
+  - \usepackage{cleveref}
+  - \usepackage{threeparttable}
+output:
+  pdf_document: 
+    fig_caption: yes
+    number_sections: no
+    toc: true
+    toc_depth: 3
+---
+
+\pagebreak
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, 
+                      # fig.dim = c(5,5),
+                      # out.height = '40%',
+                      # fig.align = 'center',
+                      message=FALSE
+                      )
+
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+library(readr)
+library(dplyr)
+
+
+```
+
+
+# Questão 1
+
+Breve resumo do artigo:
+
+(ii) Fabiani, M., Ramigni, M., Gobbetto, V., Mateo-Urdiales, A., Pezzotti, P., Piovesan, C. (2021). Effectiveness of the Comirnaty (BNT162b2, BioNTech/Pfizer) vaccine in preventing SARS-CoV-2 infection among healthcare workers, Treviso province, Veneto region, Italy, 27 December 2020 to 24 March 2021, _Euro Surveillance_, 26(17).
+
+O objetivo do artigo foi estimar a eficácia da vacina Comirnaty (BNT162b2, BioNTech/Pfizer) na prevenção de infecção por SARS-CoV-2. Para isso, foi realizado um estudo de coorte retrospectivo no qual foram utilizados dados demográficos, características profissionais e datas de vacinção de 6.423 trabalhadores da área de saúde empregados na unidade local de saúde da província de Treviso em Veneto na Itália.
+
+Primeiro, foram realizadas curvas de Kaplan-Meier para o tempo desde o inicio da campanha de vacinação até a infecção pelo vírus ou o fim do estudo para indivíduos não vacinados, que tomaram a primeira dose e ambas as doses da vacina. As curvas mostram que os pacientes que tomaram ambas as doses, e depois os que tomaram a primeira dose, apresentaram consistentemente uma menor probabilidade acumulada de infecção.
+
+Também foi feita uma análise para o número de dias desde a administração da vacina para medir a duração do acompanhamento. A eficácia da vacina em diferentes intervalos de tempo foi estimada usando um modelo multivariável de risco proporcional de Cox, incluindo sexo, faixa etária, categoria profissional, contexto de trabalho e semana inicial de exposição como covariáveis.
+
+A análise sugeriu que a vacina Comirnaty teve uma alta eficácia na prevenção da infecção por SARS-CoV-2 em HCW durante os intervalos de tempo após a administração em que a proteção pode ser esperada.
+
+
+# Questão 2
+
+# Questão 3
+
+# Questão 4
+
+# Questão 5
