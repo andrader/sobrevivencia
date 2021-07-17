@@ -144,6 +144,8 @@ Testamos a hipótese $\mathrm{H}_{0}: \boldsymbol{\beta}=\mathbf{0}$ utilizando 
 
 # Questão 5
 
+## a)
+
 ```{r, include = FALSE}
 # QUESTAO 5 ----
 # QUESTAO 5a ----
@@ -175,7 +177,7 @@ lines(smooth)
 
 Observemos então que parece ser realmente uma tendência linear, indicando que transformações não são necessárias para essa variável no modelo.
 
-## 5.b
+## b)
 
 ```{r}
 # 5.b
@@ -185,7 +187,7 @@ summary(q5_cox_b)
 
 Notemos que pelos testes de Wald apenas _sex_ não se mostra significativa ao nível de 5%.
 
-## 5.c
+## c)
 
 Aplicando o Teste de Razão de Verossimilhanças para avaliar a exclusão de cada variável individualmente temos, para Idade:
 
@@ -225,7 +227,7 @@ summary(q5_cox)
 
 Notemos que ter Estágio igual a 1 leva a ter uma taxa de falha 164% maior do que pacientes com Estágio igual a 0. E a cada ano a mais na idade a taxa de falha é 3.6% maior comparada com o ano anterior.
 
-## 5.d
+## d)
 
 ```{r}
 # 5.d
