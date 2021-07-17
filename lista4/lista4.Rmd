@@ -77,6 +77,119 @@ A análise sugeriu que a vacina Comirnaty teve uma alta eficácia na prevenção
 
 ## 2.a
 
+```{r, include = F}
+# Questão 2
+library(survival)
+library(survminer)
+
+q2 <- data.frame(trat = c(rep("Sem tratamento",10),rep("Radiação",10),
+rep("Radiação + BPA",10)),
+tempo = c(20,21,23,24,24,26,26,27,28,30,26,28,29,29,30,
+30,31,31,32,35,31,32,34,35,36,38,38,39,42,42), 
+falha = c(rep(1,19),0,rep(1,8),0,0))
+q2$trat = as.factor(q2$trat)
+```
+
+Primeiro vamos observar as curvas de Kaplan-Meier para cada grupo.
+
+```{r}
+q2_km = survfit(Surv(tempo, falha)~trat, data = q2, 
+                    conf.type = 'log-log') 
+
+ggsurvplot(q2_km,q2, conf.int = T, risk.table = T, tables.height = 0.35)+
+  labs(x="Tempo (dias)", y=expression(hat(S)(t)))
+```
+
+Notemos então que parece existir uma ordenação entre as curvas dos três curvas, onde o grupo sem tratamento tem uma função de sobrevivência menor nos tempos superiores a 20, e o grupo com Radiação + BPA parece ter os maiores valores da função de sobrevivência.
+
+Aplicando então o teste de Log-Rank, que tem como hipótese nula a de que as funções de sobrevivência populacionais são iguais para os três grupos:
+
+```{r}
+surv_pvalue(q2_km)
+```
+
+Vemos então que o p-valor leva à rejeição da hipótese nula sob qualquer nível de significância usual, de modo que há então evidências que a função de sobrevivência de ao menos um grupo é diferente das demais.
+
+## 2.b
+
+Criando as variáveis binárias:
+
+```{r}
+# 2.b
+q2$z1 = ifelse(q2$trat == 'Radiação', 1, 0)
+q2$z2 = ifelse(q2$trat == 'Radiação + BPA', 1, 0)
+```
+
+Como existem empates, vamos testar os coeficientes e erros-padrão gerados a partir de três algoritmos diferentes: Efron, Breslow e Cox (exato).
+
+### Efron
+
+```{r}
+q2_cox_efron = coxph(Surv(tempo, falha)~ z1 + z2, data = q2, ties = 'efron')
+summary(q2_cox_efron)
+```
+
+### Breslow
+
+```{r}
+q2_cox_breslow = coxph(Surv(tempo, falha)~ z1 + z2, data = q2, ties = 'breslow')
+summary(q2_cox_breslow)
+```
+
+### Exato
+
+```{r}
+q2_cox_exact = coxph(Surv(tempo, falha)~ z1 + z2, data = q2, ties = 'exact')
+summary(q2_cox_exact)
+```
+
+### Conclusão
+
+Notemos então que ao nível de 5% todos os coeficientes parecem significativos através dos testes de Wald individuais, independentemente do algoritmo usado para empates.
+
+## 2.c
+
+O próprio método utilizado já nos retorna o p-valor do teste de razão de verossimilhanças comparando com o modelo nulo. Portanto, olhando para as saídas disponíveis em 2.b nós notamos que a hipótese nula desse teste é rejeitada ao nível de 5% independentemente da aproximação utilizada.
+
+## 2.d
+
+O próprio método utilizado também nos retorna o p-valor do teste de Wald comparando com o modelo nulo. Portanto, olhando para as saídas disponíveis em 2.b nós notamos que a hipótese nula desse teste é rejeitada ao nível de 5% independentemente da aproximação utilizada.
+
+## 2.e
+
+Para isso vamos comparar o modelo completo (os feitos em 2.b) com o modelo substituindo Z1 e Z2 por uma única variável (z3), que é 1 se Z1 ou Z2 forem 1, e 0 caso contrário (o que é o mesmo que falar que o efeito é o mesmo/são a mesma variável).
+
+Para a comparação utilizaremos o teste de razão de verossimilhanças.
+
+
+
+### Efron
+
+```{r}
+# 2.e
+q2$z3 = ifelse(q2$z1 ==1 | q2$z2 ==1, 1, 0)
+q2_cox_efron2 = coxph(Surv(tempo, falha)~ z3, data = q2, ties = 'efron')
+anova(q2_cox_efron, q2_cox_efron2)
+```
+
+### Breslow
+
+```{r}
+q2_cox_breslow2 = coxph(Surv(tempo, falha)~ z3, data = q2, ties = 'breslow')
+anova(q2_cox_breslow, q2_cox_breslow2)
+```
+
+### Exato
+
+```{r}
+q2_cox_exact2 = coxph(Surv(tempo, falha)~ z3, data = q2, ties = 'exact')
+anova(q2_cox_exact, q2_cox_exact2)
+```
+
+### Conclusão
+
+Em todas as aproximações a hipótese nula, que os efeitos são iguais, é rejeitada ao nível de 5%.
+
 # Questão 3
 
 # Questão 4
