@@ -79,4 +79,65 @@ A análise sugeriu que a vacina Comirnaty teve uma alta eficácia na prevenção
 
 # Questão 4
 
+## a)
+
+```{r}
+# Questão 4 ----
+
+
+# t<0 representa censura à direita
+t = c(28,59,89,175,195,309,-377, -393, -421, 447, 462,-709, -744, -1106, -1206,
+      34,88,137,-199, -280, 291,-299, -300, 308,351, 358,369,-370, 371,375,
+      -382, 392,-429, 451,-1119, 49,87,187,293,-302, -300, 353,-360, 402,-480, 
+      -486, -545, -552, -1460, -1460)
+
+dados <- tibble(
+  tempo=abs(t), 
+  delta=as.numeric(t>0), 
+  tumor=c(rep("Grande",15), rep("Moderado",20), rep("Pequeno",15))) %>% 
+  mutate(tumor=factor(tumor, levels = c("Pequeno","Moderado","Grande") ))
+
+## 4a  ----
+library(survival)
+library(survminer)
+fit <- survfit(Surv(tempo, delta) ~ tumor, data = dados)
+p=ggsurvplot(fit, data = dados, conf.int = T, conf.int.alpha=0.1)
+p$plot
+```
+As curvas de Kaplan-Meier mostram que as estimativas da probabilidade de sobrevivência para o grupo com tumor moderado são menores a partir do dia 350. Entretanto, as curvas se cruzam por volta do dia 300 e todas as estimativas apresentam intervalos de confiança sobrepostos, o que indica que as curvas são próximas.
+
+## b)
+
+```{r}
+## 4b  ----
+# logrank
+survdiff(formula(fit),data=dados)
+# Harrington and Fleming com rho = 0.5
+survdiff(formula(fit),data=dados, rho=0.5)
+```
+Realizamos os testes de _log-rank_ e o teste da familia Harrington and Fleming com $\rho = 0.5$ e obtemos os valores p 0.4 e 0.5 respectivamente. Em ambos os testes, não rejeitamos a hipótese nula de que as curvas de sobrevivência são iguais entre os pacientes com tumor pequeno, moderado e grande, a um nível de significância de 5%.
+
+
+
+## c)
+
+```{r}
+## 4c  ----
+fit2 <- coxph(Surv(tempo, delta) ~ tumor, data = dados)
+summary(fit2)
+```
+A partir da saída do modelo, interpretamos que
+
+- O risco de óbito no grupo com tumor moderado é $e^{\hat\beta_M} \approx 2$ vezes o risco no grupo com tumor pequeno.
+- O risco de óbito no grupo com tumor moderado é $(e^{\hat\beta_M}-1)100\% \approx 34\%$ maior que o risco no grupo com tumor pequeno.
+
+Entretanto as estimativas para o erro padrão das estimativas dos coeficientes de tumor moderado e grande são altas, e isso reflete que as estimativas intervalares de 95% de confiança para $e^{\beta_M}$ e $e^{\beta_G}$ contém o 1, ou, de forma equivalente, os valores p não são significativos a um nível de 5%. Dessa forma, não rejeitamos as hipóteses de que $\beta_M=0$ e $\beta_G=0$.
+
+
+## d)
+
+Testamos a hipótese $\mathrm{H}_{0}: \boldsymbol{\beta}=\mathbf{0}$ utilizando a estatística de teste da razão de verossimilhanças. A saída do teste se encontra no item c). O valor da estatística obtido foi de $1,98$ com dois graus de liberdade e um valor-p de $0,4$. Com isso, não rejeteitamos a hipótese nula a um nível de 5%.
+
+
+
 # Questão 5
