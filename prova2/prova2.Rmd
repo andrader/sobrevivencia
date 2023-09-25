@@ -1,0 +1,290 @@
+---
+title: "MAE0514 - Prova 2 - Parte 2"
+author: |
+  | Rubens Santos Andrade Filho\thanks{Número USP: 10370336}
+date: "`r stringr::str_to_sentence(format(Sys.time(), '%B de %Y'))`"
+lang: pt-BR
+header-includes:
+  # - \usepackage[brazilian]{babel} # ja usando lang: pt-BR
+  - \usepackage{float}
+  - \usepackage{amsmath}
+  - \usepackage{amsthm}
+  - \floatplacement{figure}{H}
+  - \usepackage{indentfirst}
+  - \setlength{\parindent}{4em}
+  - \setlength{\parskip}{1em}
+  - \usepackage{booktabs}
+  - \usepackage{dcolumn}
+  - \usepackage{bm}
+  - \usepackage{titling}
+  - \thanksmarkseries{arabic} % \thanks footnotes com numeros
+  - \usepackage[bottom]{footmisc} % corrige posição footnotes
+  - \usepackage{grffile}
+  - \usepackage{pdfpages}
+  - \usepackage{tocloft}
+  - \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+  - \usepackage{amssymb}
+  - \renewcommand\qedsymbol{$\blacksquare$}
+  - \usepackage{pdfpages}
+  - \usepackage{cleveref}
+  - \usepackage{threeparttable}
+output:
+  pdf_document: 
+    fig_caption: yes
+    number_sections: no
+    toc: true
+    toc_depth: 3
+---
+
+\pagebreak
+
+\newcommand\invisiblesection[1]{%
+  \refstepcounter{section}%
+  \addcontentsline{toc}{section}{#1}%
+  \sectionmark{#1}}
+
+```{r setup, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(survival)
+library(survminer)
+library(gtsummary)
+
+knitr::opts_chunk$set(warning=FALSE, 
+                      # fig.dim = c(5,5),
+                      # out.height = '40%',
+                      # fig.align = 'center',
+                      message=FALSE,
+                      echo=FALSE
+                      )
+
+
+
+# helper com padroes predefinidos
+ggsurv <- function(
+  fit, 
+  conf.int = T,
+  surv.median.line = "hv",
+  ggtheme = theme_bw(),
+  xlim=NULL,break.time.by = NULL,
+  risk.table = T, tables.height = 0.32,
+  legend='top', ...) {
+  
+  ggsurvplot(
+    fit,conf.int = conf.int,
+    surv.median.line = surv.median.line,
+    ggtheme = ggtheme,
+    xlim=xlim,
+    risk.table = risk.table, 
+    tables.height = tables.height,
+    break.time.by = break.time.by, 
+    legend=legend,
+    ...
+  )
+}
+
+```
+
+  
+# Atividade 2
+
+
+O arquivo FRTCS. dat contém dados sobre um estudo realizado na França (French Three Cities Study), com o objetivo de estudar o efeito da pressão e uso de drogas para hipertensão na sobrevida de pessoas de uma determinada população. Os indivíduos na amostra foram acompanhados até óbito ou perda de acompanhamento, e os valores da pressão diastólica, sistólica e o uso de drogas anti-hipertensivas foram avaliados no momento de entrada no estudo e em mais dois outros instantes.
+
+```{r}
+library(readr)
+library(dplyr)
+
+# install.packages("timereg")
+library(timereg)
+
+
+col_names <- c(
+  "d",
+  "age",
+  "sex",
+  "date0",
+  "sbp0",
+  "dbp0",
+  "antihyp0",
+  "date1",
+  "sbp1",
+  "dbp1",
+  "antihyp1",
+  "date2",
+  "sbp2",
+  "dbp2",
+  "antihyp2",
+  "date_event",
+  "censor")
+
+# c("0"="Sim", "1"="Não")
+col_types <- cols(
+  date0 = col_datetime("%d%b%y"),
+  date1 = col_datetime("%d%b%y"),
+  date2 = col_datetime("%d%b%y"),
+  date_event = col_datetime("%d%b%y"),
+  .default = col_double()
+)
+
+dados_raw <- readr::read_table(
+  "prova2/FRTCS.dat", 
+  col_names = col_names,
+  col_types = col_types,na = c(".")
+) 
+
+dados <- dados_raw %>% 
+  filter(!is.na(sbp2)) %>% 
+  mutate(
+    sex = factor(sex, 1:2, c("male","female")),
+    antihyp0 = factor(antihyp0, 0:1, c("no","yes")),
+    antihyp1 = factor(antihyp1, 0:1, c("no","yes")),
+    antihyp2 = factor(antihyp2, 0:1, c("no","yes")),
+    tini0 = lubridate::ddays(0), # tempo entre follow ups
+    tini1 = date1 - date0,
+    tini2 = date2 - date0,
+    tevent = date_event - date0,
+    tfim0 = tini1,
+    tfim1 = tini2,
+    tfim2 = tevent,
+    ageq = qcut(age, cuts = 4)
+)
+
+
+  
+```
+
+## (a) Análise descritiva
+
+Inicialmente, nota-se que existem 3 pacietes com observações faltantes de pressão diastólica e pressão sistólica, ambas no segundo acompanhamento. Com isso, vamos desconsiderar esses 3 pacientes e considerar apenas n=694 pacientes.
+
+```{r}
+dados_raw %>% filter(is.na(sbp2)) %>% knitr::kable()
+```
+
+A idade dos pacientes tem uma distribuiçao levemente assimétrica à direita com uma idade média de 73 anos e desvio padrão de 5,27 anos.
+
+```{r}
+dados$age %>% boxplot()
+dados$age %>% summary()
+dados$age %>% sd()
+```
+
+
+Além disso, nota-se que que 66% dos pacientes são do sexo feminino. E cerca de 10% das observações foram censuradas.
+
+```{r}
+janitor::tabyl(dados$sex) %>% janitor::adorn_pct_formatting()
+janitor::tabyl(dados$censor) %>% janitor::adorn_pct_formatting()
+```
+```{r}
+library(survival)
+library(survminer)
+
+fit <- survfit(Surv(tevent,censor)~ageq, dados)
+print(fit)
+survminer::ggsurvplot(fit)
+
+fit <- survfit(Surv(tevent,censor)~sex, dados)
+print(fit)
+survminer::ggsurvplot(fit)
+
+
+```
+
+Observa-se indicios de diferenças nas curvas de sobrevivência entre os sexos. As curvas de sobrevivência estratificadas por pela idade (a idade foi categorizada pelso quartis) mostra que as maiores idades apresentam uma menor estimativa de sobrevivência, entretanto graficamente é dificil avaliar se essa diferença é significativa.
+
+
+
+## (b) Modelo inicial
+
+Organizamos os dados de maneira apropriada para a ajustar o modelo semiparamétrico de Cox (incluimos os códigos utilizados no final da prova) com variáveis dependentes do tempo. Ajustamos o modelo semiparamétrico de Cox, incluindo como variáveis explicativas: sexo, idade, pressão diastólica, sistólica e o uso de drogas anti-hipertensivas.
+
+
+```{r}
+dados_long <- bind_rows(
+  dados %>% 
+    dplyr::select(-dplyr::matches("\\d"), 
+                  dplyr::ends_with("0")) %>% 
+    rename_with(~gsub("\\d","",.x), dplyr::ends_with("0")),
+  
+  dados %>% dplyr::select(-dplyr::matches("\\d"), 
+                          dplyr::ends_with("1")) %>% 
+    rename_with(~gsub("\\d","",.x), dplyr::ends_with("1")),
+  
+  dados %>% dplyr::select(-dplyr::matches("\\d"), 
+                          dplyr::ends_with("2")) %>% 
+    rename_with(~gsub("\\d","",.x), dplyr::ends_with("2")),
+  .id = "fup"
+)
+
+
+fit = coxph(Surv(tini, tfim, censor)~
+                  age + sex + sbp +dbp + antihyp, 
+                data = dados_long)
+
+fit
+
+summary(fit)
+```
+O resumo mostra que pelo tanto o teste de RV, Wald e Socre deram significativos a um nível de 5%, indicando que pelo menos uma das variáveis explicativas foi significativa e o modelo é diferente do modelo apenas com intercepto.
+
+
+## (c) Seleção de variáveis
+
+Selecionamos as variáveis explicativas significativas e apresentamos o modelo final ajustado. Começamos com o modelo com todas as variáveis e uma a uma retiramos a variável do modelo e realizamos o teste de razão de verossimilhanças entre este e o anterior, não incluindo a variável no modelo caso o teste não seja significativo a 5% (não rejeitando a hipótese nula do menor número de parâmetros).
+
+```{r}
+#retirando age
+fit1 = coxph(Surv(tini, tfim, censor)~
+                  sex + sbp +dbp + antihyp, 
+                data = dados_long)
+anova(fit1, fit)
+#retirando sex
+fit1 = coxph(Surv(tini, tfim, censor)~
+                  age + sbp +dbp + antihyp, 
+                data = dados_long)
+anova(fit1, fit)
+#retirando sbp
+fit1 = coxph(Surv(tini, tfim, censor)~
+                  age+sex +dbp + antihyp, 
+                data = dados_long)
+#retirando dbp
+fit1 = coxph(Surv(tini, tfim, censor)~
+                  age+sex +sbp + antihyp, 
+                data = dados_long)
+anova(fit1, fit)
+#retirando antihyp
+fit1 = coxph(Surv(tini, tfim, censor)~
+                  age+sex + sbp + dbp, 
+                data = dados_long)
+anova(fit1, fit)
+
+```
+O modelo selecionado incluiu `sex`, `dbp` e `antihyp`. Entretanto, `dbp` não é significativa a 5% no modelo apenas com essas três covariáveis. Com isso, o modelo final inclui apenas `sex` e `antihyp`.
+```{r}
+
+fitfinal = coxph(Surv(tini, tfim, censor)~
+                  sex + antihyp, 
+                data = dados_long)
+fitfinal
+```
+
+
+## (d) Interpretação
+
+Interpretamos a seguir o modelo ajustado no item anterior e discutimos os resultados.
+
+```{r}
+fitfinal %>% summary()
+```
+Utilizando a suposição de as taxas de falha serem proporcionais, interpretamos que pacientes do sexo feminino tem uma chance de óbito $(1-\exp{\hat \beta_1})100\% = 69\%$ menor do que pacientes do sexo masculino. Enquanto que para pacientes que fizeram o uso de drogas anti-hipertensivas, a chance de óbito é $(\exp{\hat \beta_2}-1)100\% = 286\%$ maior que em pacientes que não fizeram o uso.
+
+
+# Código
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
